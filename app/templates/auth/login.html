@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Iniciar Sesión{% endblock %}
+
+{% block main_class %}container-fluid{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center align-items-center min-vh-100">
+    <div class="col-md-6 col-lg-4">
+        <div class="card shadow">
+            <div class="card-header bg-primary text-white text-center">
+                <h4 class="mb-0">
+                    <i class="fas fa-sign-in-alt"></i>
+                    Iniciar Sesión
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Mensajes de error -->
+                <div id="error-message" class="alert alert-danger d-none" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="error-text"></span>
+                </div>
+
+                <!-- Mensajes de éxito -->
+                <div id="success-message" class="alert alert-success d-none" role="alert">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="success-text"></span>
+                </div>
+
+                <!-- Formulario de login -->
+                <form id="login-form" hx-post="/api/auth/login" hx-target="#login-form" hx-swap="none">
+                    <div class="mb-3">
+                        <label for="username" class="form-label">
+                            <i class="fas fa-user"></i> Usuario o Email
+                        </label>
+                        <input
+                            type="text"
+                            class="form-control"
+                            id="username"
+                            name="username"
+                            required
+                            placeholder="Ingresa tu usuario o email"
+                        >
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            <i class="fas fa-lock"></i> Contraseña
+                        </label>
+                        <input
+                            type="password"
+                            class="form-control"
+                            id="password"
+                            name="password"
+                            required
+                            placeholder="Ingresa tu contraseña"
+                        >
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="remember">
+                        <label class="form-check-label" for="remember">
+                            Recordarme
+                        </label>
+                    </div>
+
+                    <div class="d-grid">
+                        <button type="submit" class="btn btn-primary btn-lg" id="login-btn">
+                            <i class="fas fa-sign-in-alt"></i>
+                            Iniciar Sesión
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Enlaces adicionales -->
+                <div class="text-center mt-3">
+                    <a href="/recuperar-password" class="text-decoration-none">
+                        <i class="fas fa-key"></i> ¿Olvidaste tu contraseña?
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información del sistema -->
+        <div class="text-center mt-3 text-muted">
+            <small>
+                Credexa v1.0<br>
+                Desarrollado para pequeñas empresas
+            </small>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const loginForm = document.getElementById('login-form');
+    const loginBtn = document.getElementById('login-btn');
+    const errorMessage = document.getElementById('error-message');
+    const successMessage = document.getElementById('success-message');
+    const errorText = document.getElementById('error-text');
+    const successText = document.getElementById('success-text');
+
+    // Configurar HTMX para manejar respuestas
+    document.body.addEventListener('htmx:afterRequest', function(evt) {
+        const xhr = evt.detail.xhr;
+
+        // Ocultar mensajes anteriores
+        errorMessage.classList.add('d-none');
+        successMessage.classList.add('d-none');
+
+        if (xhr.status === 200) {
+            // Login exitoso - redirigir al dashboard
+            successText.textContent = 'Iniciando sesión...';
+            successMessage.classList.remove('d-none');
+            setTimeout(() => {
+                window.location.href = '/dashboard';
+            }, 1000);
+        } else if (xhr.status >= 400) {
+            // Error en login
+            try {
+                const response = JSON.parse(xhr.responseText);
+                errorText.textContent = response.detail || 'Error al iniciar sesión';
+            } catch (e) {
+                errorText.textContent = 'Error al iniciar sesión';
+            }
+            errorMessage.classList.remove('d-none');
+        }
+
+        // Rehabilitar botón
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Iniciar Sesión';
+    });
+
+    // Mostrar loading en el botón
+    loginForm.addEventListener('submit', function() {
+        loginBtn.disabled = true;
+        loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Iniciando...';
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,397 @@
+{% extends "base.html" %}
+
+{% block title %}Préstamo #{{ prestamo.id }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-file-invoice-dollar"></i>
+                Préstamo #{{ prestamo.id }}
+            </h1>
+            <div>
+                <a href="/prestamos" class="btn btn-secondary me-2">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver
+                </a>
+                {% if prestamo.estado == 'activo' %}
+                <button class="btn btn-success" onclick="registrarPago()">
+                    <i class="fas fa-cash-register"></i>
+                    Registrar Pago
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información del préstamo -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i>
+                    Información del Préstamo
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Cliente</h6>
+                        <p class="mb-3">
+                            <strong>{{ prestamo.cliente.nombre_completo }}</strong><br>
+                            <small class="text-muted">Cédula: {{ prestamo.cliente.cedula }}</small>
+                        </p>
+
+                        <h6>Monto del Préstamo</h6>
+                        <p class="h4 text-primary mb-3">{{ "{:,.0f}".format(prestamo.monto) }} COP</p>
+
+                        <h6>Valor de la Cuota</h6>
+                        <p class="h5 text-info mb-3">{{ "{:,.0f}".format(prestamo.valor_cuota) }} COP</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Estado</h6>
+                        <p class="mb-3">
+                            {% if prestamo.estado == 'activo' %}
+                                <span class="badge bg-success">Activo</span>
+                            {% elif prestamo.estado == 'pagado' %}
+                                <span class="badge bg-primary">Pagado</span>
+                            {% elif prestamo.estado == 'mora' %}
+                                <span class="badge bg-danger">En Mora</span>
+                            {% elif prestamo.estado == 'refinanciado' %}
+                                <span class="badge bg-warning">Refinanciado</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ prestamo.estado }}</span>
+                            {% endif %}
+                        </p>
+
+                        <h6>Tasa de Interés</h6>
+                        <p class="mb-3">{{ prestamo.tasa_interes }}% mensual</p>
+
+                        <h6>Plazo</h6>
+                        <p class="mb-3">{{ prestamo.numero_cuotas }} meses</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Fecha de Inicio</h6>
+                        <p class="mb-3">{{ prestamo.fecha_inicio.strftime('%d/%m/%Y') }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Fecha de Creación</h6>
+                        <p class="mb-3">{{ prestamo.creado_en.strftime('%d/%m/%Y %H:%M') }}</p>
+                    </div>
+                </div>
+
+                {% if prestamo.observaciones %}
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Observaciones</h6>
+                        <p class="mb-0">{{ prestamo.observaciones }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Resumen financiero -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-chart-line"></i>
+                    Resumen Financiero
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <small class="text-muted">Total de Intereses:</small>
+                    <div class="h6 text-info">{{ "{:,.0f}".format(prestamo.total_intereses) }} COP</div>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Total a Pagar:</small>
+                    <div class="h6 text-success">{{ "{:,.0f}".format(prestamo.total_pagar) }} COP</div>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Saldo Pendiente:</small>
+                    <div class="h6 text-warning">{{ "{:,.0f}".format(prestamo.saldo_pendiente) }} COP</div>
+                </div>
+                <hr>
+                <div class="mb-0">
+                    <small class="text-muted">Cuotas Pagadas:</small>
+                    <div class="h6">{{ prestamo.cuotas_pagadas }} de {{ prestamo.numero_cuotas }}</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progreso de pago -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-tasks"></i>
+                    Progreso de Pago
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-2" style="height: 20px;">
+                    <div class="progress-bar" role="progressbar"
+                         style="width: {{ prestamo.progreso_pago|default(0) }}%"
+                         aria-valuenow="{{ prestamo.progreso_pago|default(0) }}"
+                         aria-valuemin="0" aria-valuemax="100">
+                        {{ prestamo.progreso_pago|default(0)|round(1) }}%
+                    </div>
+                </div>
+                <small class="text-muted">
+                    {{ prestamo.cuotas_restantes|default(prestamo.numero_cuotas) }} cuotas restantes
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Historial de pagos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history"></i>
+                    Historial de Pagos
+                </h5>
+                {% if prestamo.estado == 'activo' %}
+                <button class="btn btn-sm btn-success" onclick="registrarPago()">
+                    <i class="fas fa-plus"></i>
+                    Nuevo Pago
+                </button>
+                {% endif %}
+            </div>
+            <div class="card-body">
+                <div id="pagos-container">
+                    <div class="text-center py-4">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando historial de pagos...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para registrar pago -->
+<div class="modal fade" id="pagoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-cash-register"></i>
+                    Registrar Pago - Préstamo #{{ prestamo.id }}
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="pago-form">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha_pago" class="form-label">Fecha del Pago *</label>
+                            <input type="date" class="form-control" id="fecha_pago" name="fecha_pago" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="monto_pagado" class="form-label">Monto Pagado *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="monto_pagado" name="monto_pagado"
+                                       required min="1" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="metodo_pago" class="form-label">Método de Pago</label>
+                            <select class="form-select" id="metodo_pago" name="metodo_pago">
+                                <option value="">Seleccionar...</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="tarjeta">Tarjeta de Crédito/Débito</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="referencia_pago" class="form-label">Referencia/Recibo</label>
+                            <input type="text" class="form-control" id="referencia_pago" name="referencia_pago"
+                                   placeholder="Número de comprobante">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="observaciones_pago" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones_pago" name="observaciones_pago"
+                                  rows="2" placeholder="Notas adicionales del pago"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="guardar-pago">
+                    <i class="fas fa-save"></i>
+                    Registrar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    cargarHistorialPagos();
+
+    // Configurar fecha actual en el modal
+    const fechaPagoInput = document.getElementById('fecha_pago');
+    const today = new Date().toISOString().split('T')[0];
+    fechaPagoInput.value = today;
+    fechaPagoInput.setAttribute('max', today);
+});
+
+async function cargarHistorialPagos() {
+    try {
+        // Cargar pagos del préstamo (filtrando por prestamo_id)
+        const response = await Utils.ajax(`/api/pagos?prestamo_id={{ prestamo.id }}&limit=50`);
+        mostrarHistorialPagos(response.items || []);
+
+    } catch (error) {
+        console.error('Error cargando historial de pagos:', error);
+        document.getElementById('pagos-container').innerHTML = `
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                No se pudo cargar el historial de pagos.
+            </div>
+        `;
+    }
+}
+
+function mostrarHistorialPagos(pagos) {
+    const container = document.getElementById('pagos-container');
+
+    if (pagos.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-receipt fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">Sin pagos registrados</h5>
+                <p class="text-muted">Aún no se han registrado pagos para este préstamo.</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Monto</th>
+                        <th>Capital</th>
+                        <th>Intereses</th>
+                        <th>Método</th>
+                        <th>Referencia</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    pagos.forEach(pago => {
+        const fecha = new Date(pago.fecha_pago).toLocaleDateString('es-CO');
+        const metodoBadge = getMetodoBadge(pago.metodo_pago);
+
+        html += `
+            <tr>
+                <td>${fecha}</td>
+                <td class="text-success"><strong>${Utils.formatCurrency(pago.monto_pagado)}</strong></td>
+                <td>${Utils.formatCurrency(pago.capital_pagado)}</td>
+                <td>${Utils.formatCurrency(pago.intereses_pagados)}</td>
+                <td>${metodoBadge}</td>
+                <td><small class="text-muted">${pago.referencia_pago || '-'}</small></td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    container.innerHTML = html;
+}
+
+function getMetodoBadge(metodo) {
+    if (!metodo) return '<span class="badge bg-light text-dark">No especificado</span>';
+
+    const metodos = {
+        'efectivo': '<span class="badge bg-success">Efectivo</span>',
+        'transferencia': '<span class="badge bg-primary">Transferencia</span>',
+        'cheque': '<span class="badge bg-warning text-dark">Cheque</span>',
+        'tarjeta': '<span class="badge bg-info">Tarjeta</span>'
+    };
+
+    return metodos[metodo.toLowerCase()] || `<span class="badge bg-light text-dark">${metodo}</span>`;
+}
+
+function registrarPago() {
+    const modal = new bootstrap.Modal(document.getElementById('pagoModal'));
+    modal.show();
+}
+
+// Configurar el botón de guardar pago
+document.getElementById('guardar-pago').addEventListener('click', async function() {
+    const form = document.getElementById('pago-form');
+    const formData = new FormData(form);
+
+    const pagoData = {
+        prestamo_id: {{ prestamo.id }},
+        fecha_pago: formData.get('fecha_pago'),
+        monto_pagado: parseFloat(formData.get('monto_pagado')),
+        metodo_pago: formData.get('metodo_pago') || null,
+        referencia_pago: formData.get('referencia_pago') || null,
+        observaciones: formData.get('observaciones_pago') || null
+    };
+
+    try {
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+        const response = await Utils.ajax('/api/pagos', {
+            method: 'POST',
+            body: JSON.stringify(pagoData)
+        });
+
+        Utils.showSuccess('Pago registrado exitosamente');
+
+        // Cerrar modal y recargar página
+        bootstrap.Modal.getInstance(document.getElementById('pagoModal')).hide();
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
+
+    } catch (error) {
+        console.error('Error registrando pago:', error);
+        let errorMsg = 'Error al registrar el pago';
+
+        if (error.detail) {
+            errorMsg = error.detail;
+        }
+
+        Utils.showError(errorMsg);
+
+        this.disabled = false;
+        this.innerHTML = '<i class="fas fa-save"></i> Registrar Pago';
+    }
+});
+</script>
+{% endblock %}

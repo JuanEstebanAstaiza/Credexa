@@ -1,0 +1,1250 @@
+{% extends "base.html" %}
+
+{% block title %}Reporte de Pagos{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="fas fa-calendar-check"></i>
+                    Reporte de Pagos
+                </h1>
+                <p class="text-muted mb-0">Genera reportes detallados de pagos por período</p>
+            </div>
+            <a href="/reportes" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Volver
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros de Reporte -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter"></i>
+                    Filtros del Reporte
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="form-filtros">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <label for="fecha_desde" class="form-label">Fecha Desde</label>
+                            <input type="date" class="form-control" id="fecha_desde" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="fecha_hasta" class="form-label">Fecha Hasta</label>
+                            <input type="date" class="form-control" id="fecha_hasta" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="tipo_pago" class="form-label">Tipo de Pago</label>
+                            <select class="form-select" id="tipo_pago">
+                                <option value="">Todos</option>
+                                <option value="cuota">Cuota Completa</option>
+                                <option value="abono">Abono</option>
+                                <option value="refinanciacion">Refinanciación</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="metodo_pago" class="form-label">Método de Pago</label>
+                            <select class="form-select" id="metodo_pago">
+                                <option value="">Todos</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="tarjeta">Tarjeta</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label for="monto_min" class="form-label">Monto Mínimo</label>
+                            <input type="number" class="form-control" id="monto_min" min="0" step="1000" placeholder="0">
+                        </div>
+                        <div class="col-md-2">
+                            <label for="monto_max" class="form-label">Monto Máximo</label>
+                            <input type="number" class="form-control" id="monto_max" min="0" step="1000" placeholder="Sin límite">
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <div class="d-grid gap-2 w-100">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-search"></i>
+                                    Generar Reporte
+                                </button>
+                                <button type="button" class="btn btn-outline-success btn-sm" onclick="generarReporteRapido()">
+                                    <i class="fas fa-bolt"></i>
+                                    Reporte Rápido
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
+                <!-- Botones de período rápido -->
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPeriodo('hoy')">
+                                Hoy
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPeriodo('ayer')">
+                                Ayer
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPeriodo('semana')">
+                                Esta Semana
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPeriodo('mes')">
+                                Este Mes
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPeriodo('mes_anterior')">
+                                Mes Anterior
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Resultados del Reporte -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-table"></i>
+                    Resultados del Reporte
+                </h5>
+                <div id="resumen-reporte" class="text-muted small">
+                    <!-- Aquí se mostrará el resumen -->
+                </div>
+                <div id="botones-exportacion" class="mt-3 d-flex justify-content-between align-items-center" style="display: none;">
+                    <div>
+                        <small class="text-success">
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Reporte generado exitosamente</strong> - Exportar los resultados
+                        </small>
+                    </div>
+                    <div class="btn-group" role="group">
+                        <button class="btn btn-success btn-sm" onclick="exportarExcel()" title="Exportar a Excel">
+                            <i class="fas fa-file-excel"></i>
+                            Excel
+                        </button>
+                        <button class="btn btn-danger btn-sm" onclick="exportarPDF()" title="Exportar a PDF">
+                            <i class="fas fa-file-pdf"></i>
+                            PDF
+                        </button>
+                        <button class="btn btn-info btn-sm" onclick="exportarCSV()" title="Exportar a CSV">
+                            <i class="fas fa-file-csv"></i>
+                            CSV
+                        </button>
+                        <div class="btn-group" role="group">
+                            <button type="button" class="btn btn-outline-secondary btn-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false" title="Más opciones">
+                                <i class="fas fa-ellipsis-h"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="imprimirReporte()">
+                                    <i class="fas fa-print"></i> Imprimir Reporte
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="copiarTabla()">
+                                    <i class="fas fa-copy"></i> Copiar Tabla
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Tabla de resultados -->
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="tabla-resultados" style="display: none;">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Fecha</th>
+                                <th>Hora</th>
+                                <th>Cliente</th>
+                                <th>Préstamo</th>
+                                <th>Monto Pagado</th>
+                                <th>Capital</th>
+                                <th>Intereses</th>
+                                <th>Cuota</th>
+                                <th>Tipo</th>
+                                <th>Método</th>
+                                <th>Referencia</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla">
+                            <!-- Los resultados se cargarán aquí -->
+                        </tbody>
+                        <tfoot>
+                            <tr id="fila-totales" style="display: none;">
+                                <th colspan="5" class="text-end">TOTALES:</th>
+                                <th id="total-monto-pagado">-</th>
+                                <th id="total-capital">-</th>
+                                <th id="total-intereses">-</th>
+                                <th>-</th>
+                                <th colspan="4"></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
+                <!-- Mensaje cuando no hay resultados -->
+                <div id="sin-resultados" class="text-center py-5" style="display: none;">
+                    <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No se encontraron pagos en el período seleccionado</h5>
+                    <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
+                </div>
+
+                <!-- Loading -->
+                <div id="loading" class="text-center py-5" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Generando reporte...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentFilters = {};
+
+function setPeriodo(periodo) {
+    const hoy = new Date();
+    let fechaDesde, fechaHasta;
+
+    switch(periodo) {
+        case 'hoy':
+            fechaDesde = fechaHasta = hoy.toISOString().split('T')[0];
+            break;
+        case 'ayer':
+            const ayer = new Date(hoy);
+            ayer.setDate(ayer.getDate() - 1);
+            fechaDesde = fechaHasta = ayer.toISOString().split('T')[0];
+            break;
+        case 'semana':
+            const inicioSemana = new Date(hoy);
+            inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+            fechaDesde = inicioSemana.toISOString().split('T')[0];
+            fechaHasta = hoy.toISOString().split('T')[0];
+            break;
+        case 'mes':
+            fechaDesde = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0];
+            fechaHasta = hoy.toISOString().split('T')[0];
+            break;
+        case 'mes_anterior':
+            const mesAnterior = new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1);
+            fechaDesde = mesAnterior.toISOString().split('T')[0];
+            const finMesAnterior = new Date(hoy.getFullYear(), hoy.getMonth(), 0);
+            fechaHasta = finMesAnterior.toISOString().split('T')[0];
+            break;
+    }
+
+    document.getElementById('fecha_desde').value = fechaDesde;
+    document.getElementById('fecha_hasta').value = fechaHasta;
+}
+
+// Generar reporte
+document.getElementById('form-filtros').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const filtros = {
+        fecha_desde: document.getElementById('fecha_desde').value,
+        fecha_hasta: document.getElementById('fecha_hasta').value,
+        tipo_pago: document.getElementById('tipo_pago').value,
+        metodo_pago: document.getElementById('metodo_pago').value
+    };
+
+    // Agregar filtros opcionales solo si tienen valor
+    const montoMin = document.getElementById('monto_min').value;
+    const montoMax = document.getElementById('monto_max').value;
+
+    if (montoMin && montoMin.trim() !== '') {
+        filtros.monto_min = parseFloat(montoMin);
+    }
+    if (montoMax && montoMax.trim() !== '') {
+        filtros.monto_max = parseFloat(montoMax);
+    }
+
+    if (!filtros.fecha_desde || !filtros.fecha_hasta) {
+        Utils.showError('Debes seleccionar ambas fechas');
+        return;
+    }
+
+    // Validar que la fecha desde no sea mayor que fecha hasta
+    const fechaDesde = new Date(filtros.fecha_desde);
+    const fechaHasta = new Date(filtros.fecha_hasta);
+
+    if (fechaDesde > fechaHasta) {
+        Utils.showError('La fecha "desde" no puede ser mayor que la fecha "hasta"');
+        return;
+    }
+
+    // Validar que no sea un rango demasiado amplio (máximo 1 año)
+    const diffTime = Math.abs(fechaHasta - fechaDesde);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 365) {
+        Utils.showWarning('El rango de fechas es muy amplio (más de 1 año). La consulta puede ser lenta.');
+    }
+
+    currentFilters = filtros;
+    await generarReporte(filtros);
+});
+
+// Función para generar reporte rápido con las fechas ya configuradas
+async function generarReporteRapido() {
+    const fechaDesde = document.getElementById('fecha_desde').value;
+    const fechaHasta = document.getElementById('fecha_hasta').value;
+
+    if (!fechaDesde || !fechaHasta) {
+        Utils.showError('Configure las fechas primero usando los botones de período rápido');
+        return;
+    }
+
+    const filtros = {
+        fecha_desde: fechaDesde,
+        fecha_hasta: fechaHasta,
+        tipo_pago: document.getElementById('tipo_pago').value,
+        metodo_pago: document.getElementById('metodo_pago').value
+    };
+
+    // Agregar filtros opcionales solo si tienen valor
+    const montoMin = document.getElementById('monto_min').value;
+    const montoMax = document.getElementById('monto_max').value;
+
+    if (montoMin && montoMin.trim() !== '') {
+        filtros.monto_min = parseFloat(montoMin);
+    }
+    if (montoMax && montoMax.trim() !== '') {
+        filtros.monto_max = parseFloat(montoMax);
+    }
+
+    currentFilters = filtros;
+    await generarReporte(filtros);
+}
+
+async function generarReporte(filtros) {
+    try {
+        console.log('🔄 Generando reporte con filtros:', filtros);
+
+        // Mostrar loading
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('tabla-resultados').style.display = 'none';
+        document.getElementById('botones-exportacion').style.display = 'none';
+        document.getElementById('sin-resultados').style.display = 'none';
+
+        const response = await Utils.ajax('/api/reportes/pagos', {
+            method: 'POST',
+            body: JSON.stringify(filtros)
+        });
+
+        console.log('✅ Respuesta de la API:', response);
+        mostrarResultados(response);
+
+    } catch (error) {
+        console.error('Error generando reporte:', error);
+
+        // Mostrar mensaje de error específico
+        let errorMessage = 'Error al generar el reporte';
+        if (error.message) {
+            errorMessage += ': ' + error.message;
+        }
+
+        Utils.showError(errorMessage);
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('sin-resultados').style.display = 'block';
+        document.getElementById('botones-exportacion').style.display = 'none';
+    }
+}
+
+function mostrarResultados(pagos) {
+    console.log('📊 Mostrando resultados:', pagos);
+    document.getElementById('loading').style.display = 'none';
+
+    if (!pagos || !Array.isArray(pagos)) {
+        console.error('❌ Datos de pagos inválidos:', pagos);
+        document.getElementById('sin-resultados').style.display = 'block';
+        document.getElementById('tabla-resultados').style.display = 'none';
+        document.getElementById('botones-exportacion').style.display = 'none';
+        return;
+    }
+
+    if (pagos.length === 0) {
+        console.log('❌ No hay pagos para mostrar');
+        document.getElementById('sin-resultados').style.display = 'block';
+        document.getElementById('tabla-resultados').style.display = 'none';
+        document.getElementById('botones-exportacion').style.display = 'none';
+        return;
+    }
+
+    console.log(`✅ Procesando ${pagos.length} pagos`);
+
+    // Calcular totales
+    const totalPagos = pagos.length;
+    const totalMontoPagado = pagos.reduce((sum, pago) => sum + parseFloat(pago.monto_pagado), 0);
+    const totalCapital = pagos.reduce((sum, pago) => sum + parseFloat(pago.capital_pagado), 0);
+    const totalIntereses = pagos.reduce((sum, pago) => sum + parseFloat(pago.intereses_pagados), 0);
+
+    // Actualizar resumen
+    document.getElementById('resumen-reporte').innerHTML =
+        `<strong>${totalPagos}</strong> pagos encontrados | Total: <strong>${Utils.formatCurrency(totalMontoPagado)}</strong>`;
+
+    // Llenar tabla
+    const tbody = document.getElementById('cuerpo-tabla');
+    tbody.innerHTML = '';
+
+    pagos.forEach(pago => {
+        try {
+            const fechaCompleta = new Date(pago.fecha_pago);
+            const fecha = fechaCompleta.toLocaleDateString('es-CO');
+            const hora = fechaCompleta.toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'});
+
+            const tipoBadge = getTipoBadge(pago.tipo_pago);
+            const metodoBadge = getMetodoBadge(pago.metodo_pago);
+
+            const row = `
+                <tr>
+                    <td><strong>#${pago.id}</strong></td>
+                    <td>${fecha}</td>
+                    <td>${hora}</td>
+                    <td>
+                        <a href="/clientes/${pago.cliente_id}/editar" class="text-decoration-none">
+                            ${pago.cliente_nombre || 'N/A'}
+                        </a>
+                        <br><small class="text-muted">CC: ${pago.cliente_cedula || 'N/A'}</small>
+                    </td>
+                    <td>
+                        <a href="/prestamos/${pago.prestamo_id}/detalle" class="text-decoration-none">
+                            Préstamo #${pago.prestamo_id}
+                        </a>
+                        <br><small class="text-muted">${Utils.formatCurrency(pago.prestamo_monto || 0)}</small>
+                    </td>
+                    <td class="text-success"><strong>${Utils.formatCurrency(pago.monto_pagado || 0)}</strong></td>
+                    <td class="text-primary">${Utils.formatCurrency(pago.capital_pagado || 0)}</td>
+                    <td class="text-info">${Utils.formatCurrency(pago.intereses_pagados || 0)}</td>
+                    <td><small class="text-muted">${pago.numero_cuota || '-'}</small></td>
+                    <td>${tipoBadge}</td>
+                    <td>${metodoBadge}</td>
+                    <td><small class="text-muted">${pago.referencia_pago || '-'}</small></td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <a href="/pagos/${pago.id}/detalle" class="btn btn-outline-info btn-sm" title="Ver Detalle">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        </div>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        } catch (error) {
+            console.error('Error procesando pago:', pago, error);
+            // Mostrar fila básica en caso de error
+            const row = `
+                <tr>
+                    <td><strong>#${pago.id || 'N/A'}</strong></td>
+                    <td colspan="12" class="text-warning">
+                        <small>Error procesando este pago - ${error.message}</small>
+                    </td>
+                </tr>
+            `;
+            tbody.innerHTML += row;
+        }
+    });
+
+    // Mostrar totales en el footer
+    document.getElementById('total-monto-pagado').innerHTML = `<strong>${Utils.formatCurrency(totalMontoPagado)}</strong>`;
+    document.getElementById('total-capital').innerHTML = `<strong>${Utils.formatCurrency(totalCapital)}</strong>`;
+    document.getElementById('total-intereses').innerHTML = `<strong>${Utils.formatCurrency(totalIntereses)}</strong>`;
+    document.getElementById('fila-totales').style.display = 'table-row';
+
+    // Mostrar tabla y botones
+    document.getElementById('tabla-resultados').style.display = 'table';
+    document.getElementById('botones-exportacion').style.display = 'block';
+    document.getElementById('sin-resultados').style.display = 'none';
+
+    console.log('✅ Tabla mostrada correctamente');
+}
+
+function getTipoBadge(tipo) {
+    const tipos = {
+        'cuota': '<span class="badge bg-success">Cuota</span>',
+        'abono': '<span class="badge bg-warning text-dark">Abono</span>',
+        'refinanciacion': '<span class="badge bg-info">Refinanciación</span>'
+    };
+    return tipos[tipo] || '<span class="badge bg-secondary">' + tipo + '</span>';
+}
+
+function getMetodoBadge(metodo) {
+    const metodos = {
+        'efectivo': '<span class="badge bg-success">Efectivo</span>',
+        'transferencia': '<span class="badge bg-primary">Transferencia</span>',
+        'cheque': '<span class="badge bg-warning text-dark">Cheque</span>',
+        'tarjeta': '<span class="badge bg-info">Tarjeta</span>'
+    };
+    return metodos[metodo] || '<span class="badge bg-light text-dark">' + (metodo || 'No especificado') + '</span>';
+}
+
+async function exportarExcel() {
+    if (!currentFilters.fecha_desde || !currentFilters.fecha_hasta) {
+        Utils.showError('Primero debe generar un reporte');
+        return;
+    }
+
+    try {
+        Utils.showInfo('Generando archivo Excel...');
+
+        const response = await fetch('/api/reportes/export/pagos/excel', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Utils.getCookie('access_token')}`
+            },
+            body: JSON.stringify(currentFilters)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Error desconocido' }));
+            throw new Error(errorData.detail || 'Error al generar el archivo');
+        }
+
+        // Descargar el archivo
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `reporte_pagos_${currentFilters.fecha_desde}_${currentFilters.fecha_hasta}.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        Utils.showSuccess('Archivo Excel descargado exitosamente');
+
+    } catch (error) {
+        console.error('Error exportando Excel:', error);
+        Utils.showError(error.message || 'Error al exportar archivo Excel');
+    }
+}
+
+async function exportarPDF() {
+    if (!currentFilters.fecha_desde || !currentFilters.fecha_hasta) {
+        Utils.showError('Primero debe generar un reporte');
+        return;
+    }
+
+    try {
+        Utils.showInfo('Generando archivo PDF...');
+
+        const response = await fetch('/api/reportes/export/pagos/pdf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${Utils.getCookie('access_token')}`
+            },
+            body: JSON.stringify(currentFilters)
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ detail: 'Error desconocido' }));
+            throw new Error(errorData.detail || 'Error al generar el archivo');
+        }
+
+        // Descargar el archivo
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `reporte_pagos_${currentFilters.fecha_desde}_${currentFilters.fecha_hasta}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        Utils.showSuccess('Archivo PDF descargado exitosamente');
+
+    } catch (error) {
+        console.error('Error exportando PDF:', error);
+        Utils.showError(error.message || 'Error al exportar archivo PDF');
+    }
+}
+
+async function exportarCSV() {
+    if (!currentFilters.fecha_desde || !currentFilters.fecha_hasta) {
+        Utils.showError('Primero debe generar un reporte');
+        return;
+    }
+
+    try {
+        Utils.showInfo('Generando archivo CSV...');
+
+        // Obtener los datos del reporte actual
+        const response = await Utils.ajax('/api/reportes/pagos', {
+            method: 'POST',
+            body: JSON.stringify(currentFilters)
+        });
+
+        if (!response.length) {
+            Utils.showError('No hay datos para exportar');
+            return;
+        }
+
+        // Crear contenido CSV
+        const headers = [
+            'ID Pago',
+            'Fecha',
+            'Hora',
+            'Cliente',
+            'Cédula',
+            'Préstamo ID',
+            'Monto Préstamo',
+            'Monto Pagado',
+            'Capital Pagado',
+            'Intereses Pagados',
+            'Número Cuota',
+            'Tipo Pago',
+            'Método Pago',
+            'Referencia'
+        ];
+
+        const csvContent = [
+            headers.join(','),
+            ...response.map(pago => [
+                pago.id,
+                new Date(pago.fecha_pago).toLocaleDateString('es-CO'),
+                new Date(pago.fecha_pago).toLocaleTimeString('es-CO', {hour: '2-digit', minute: '2-digit'}),
+                `"${pago.cliente_nombre}"`,
+                pago.cliente_cedula,
+                pago.prestamo_id,
+                pago.prestamo_monto,
+                pago.monto_pagado,
+                pago.capital_pagado,
+                pago.intereses_pagados,
+                pago.numero_cuota || '',
+                pago.tipo_pago,
+                pago.metodo_pago || '',
+                `"${pago.referencia_pago || ''}"`
+            ].join(','))
+        ].join('\n');
+
+        // Crear y descargar archivo
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `reporte_pagos_${currentFilters.fecha_desde}_${currentFilters.fecha_hasta}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        Utils.showSuccess('Archivo CSV descargado exitosamente');
+
+    } catch (error) {
+        console.error('Error exportando CSV:', error);
+        Utils.showError('Error al exportar archivo CSV');
+    }
+}
+
+function imprimirReporte() {
+    // Obtener datos de la tabla
+    const table = document.getElementById('tabla-resultados');
+    const resumenContent = document.getElementById('resumen-reporte').textContent || '';
+
+    // Extraer datos de la tabla
+    const headers = [];
+    const data = [];
+
+    // Obtener headers
+    const headerRow = table.querySelector('thead tr');
+    if (headerRow) {
+        headerRow.querySelectorAll('th').forEach(th => {
+            const text = th.textContent.trim();
+            // Excluir la columna de acciones
+            if (text !== 'Acciones') {
+                headers.push(text);
+            }
+        });
+    }
+
+    // Obtener filas de datos
+    const bodyRows = table.querySelectorAll('tbody tr');
+    bodyRows.forEach(row => {
+        const rowData = [];
+        const cells = row.querySelectorAll('td');
+
+        // Procesar cada celda, excluyendo la última (acciones)
+        for (let i = 0; i < cells.length - 1; i++) {
+            const cell = cells[i];
+            let cellText = '';
+
+            // Si tiene badges, extraer solo el texto
+            const badge = cell.querySelector('.badge');
+            if (badge) {
+                cellText = badge.textContent.trim();
+            } else {
+                // Limpiar enlaces y elementos HTML
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = cell.innerHTML;
+                const links = tempDiv.querySelectorAll('a, br, small');
+                links.forEach(link => {
+                    if (link.tagName === 'BR') {
+                        link.replaceWith(' - ');
+                    } else if (link.tagName === 'SMALL') {
+                        link.replaceWith(' (' + link.textContent + ')');
+                    } else {
+                        link.replaceWith(link.textContent);
+                    }
+                });
+                cellText = tempDiv.textContent.trim();
+            }
+
+            rowData.push(cellText);
+        }
+
+        if (rowData.length > 0) {
+            data.push(rowData);
+        }
+    });
+
+    // Obtener totales del footer si existen
+    let totalesHTML = '';
+    const filaTotales = document.getElementById('fila-totales');
+    if (filaTotales && filaTotales.style.display !== 'none') {
+        const totalMonto = document.getElementById('total-monto-pagado')?.textContent || '';
+        const totalCapital = document.getElementById('total-capital')?.textContent || '';
+        const totalIntereses = document.getElementById('total-intereses')?.textContent || '';
+
+        totalesHTML = `
+            <div class="totales-section">
+                <h3>Totales del Reporte</h3>
+                <div class="totales-grid">
+                    <div class="total-item">
+                        <span class="total-label">Monto Total Pagado:</span>
+                        <span class="total-value">${totalMonto}</span>
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">Capital Total:</span>
+                        <span class="total-value">${totalCapital}</span>
+                    </div>
+                    <div class="total-item">
+                        <span class="total-label">Intereses Totales:</span>
+                        <span class="total-value">${totalIntereses}</span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    // Crear la ventana de impresión
+    const printWindow = window.open('', '_blank');
+
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reporte de Pagos - Credexa</title>
+            <style>
+                /* Reset y base */
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+
+                body {
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                    line-height: 1.6;
+                    color: #333;
+                    background: white;
+                    margin: 0;
+                    padding: 20px;
+                }
+
+                @page {
+                    size: A4;
+                    margin: 15mm;
+                }
+
+                @media print {
+                    body {
+                        margin: 0;
+                        padding: 10mm;
+                    }
+
+                    .no-print {
+                        display: none !important;
+                    }
+
+                    .page-break {
+                        page-break-before: always;
+                    }
+                }
+
+                /* Header del reporte */
+                .report-header {
+                    text-align: center;
+                    border-bottom: 3px solid #007bff;
+                    padding-bottom: 20px;
+                    margin-bottom: 30px;
+                }
+
+                .report-title {
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: #007bff;
+                    margin-bottom: 10px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+
+                .report-subtitle {
+                    font-size: 14px;
+                    color: #666;
+                    margin-bottom: 15px;
+                }
+
+                .company-info {
+                    font-size: 12px;
+                    color: #888;
+                }
+
+                /* Información del reporte */
+                .report-info {
+                    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                    border: 1px solid #dee2e6;
+                    border-radius: 8px;
+                    padding: 20px;
+                    margin-bottom: 30px;
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+                    gap: 15px;
+                }
+
+                .info-item {
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                .info-label {
+                    font-size: 12px;
+                    font-weight: bold;
+                    color: #495057;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 5px;
+                }
+
+                .info-value {
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #007bff;
+                }
+
+                /* Tabla del reporte */
+                .report-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin: 20px 0;
+                    font-size: 11px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    border-radius: 8px;
+                    overflow: hidden;
+                }
+
+                .report-table thead {
+                    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+                    color: white;
+                }
+
+                .report-table th {
+                    padding: 12px 8px;
+                    text-align: left;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    border-right: 1px solid rgba(255,255,255,0.2);
+                }
+
+                .report-table th:last-child {
+                    border-right: none;
+                }
+
+                .report-table tbody tr:nth-child(even) {
+                    background-color: #f8f9fa;
+                }
+
+                .report-table tbody tr:hover {
+                    background-color: #e3f2fd;
+                }
+
+                .report-table td {
+                    padding: 10px 8px;
+                    border-bottom: 1px solid #dee2e6;
+                    border-right: 1px solid #dee2e6;
+                    vertical-align: middle;
+                }
+
+                .report-table td:last-child {
+                    border-right: none;
+                }
+
+                .report-table tbody tr:last-child td {
+                    border-bottom: 2px solid #007bff;
+                }
+
+                /* Badges en la tabla */
+                .badge {
+                    display: inline-block;
+                    padding: 3px 8px;
+                    font-size: 10px;
+                    font-weight: bold;
+                    text-transform: uppercase;
+                    border-radius: 12px;
+                    letter-spacing: 0.3px;
+                }
+
+                .badge-success {
+                    background-color: #28a745;
+                    color: white;
+                }
+
+                .badge-warning {
+                    background-color: #ffc107;
+                    color: #212529;
+                }
+
+                .badge-danger {
+                    background-color: #dc3545;
+                    color: white;
+                }
+
+                .badge-info {
+                    background-color: #17a2b8;
+                    color: white;
+                }
+
+                .badge-secondary {
+                    background-color: #6c757d;
+                    color: white;
+                }
+
+                /* Sección de totales */
+                .totales-section {
+                    background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                    color: white;
+                    padding: 25px;
+                    border-radius: 8px;
+                    margin: 30px 0;
+                    box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+                }
+
+                .totales-section h3 {
+                    text-align: center;
+                    margin-bottom: 20px;
+                    font-size: 18px;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                }
+
+                .totales-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                }
+
+                .total-item {
+                    text-align: center;
+                    padding: 15px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 6px;
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                }
+
+                .total-label {
+                    display: block;
+                    font-size: 12px;
+                    font-weight: 500;
+                    margin-bottom: 8px;
+                    opacity: 0.9;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+
+                .total-value {
+                    display: block;
+                    font-size: 20px;
+                    font-weight: bold;
+                    letter-spacing: 0.5px;
+                }
+
+                /* Footer */
+                .report-footer {
+                    margin-top: 40px;
+                    padding-top: 20px;
+                    border-top: 2px solid #dee2e6;
+                    text-align: center;
+                    font-size: 11px;
+                    color: #6c757d;
+                }
+
+                .report-footer p {
+                    margin: 5px 0;
+                }
+
+                /* Controles de impresión */
+                .print-controls {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: white;
+                    border: 2px solid #007bff;
+                    border-radius: 8px;
+                    padding: 15px;
+                    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+                    z-index: 1000;
+                }
+
+                .print-controls button {
+                    display: block;
+                    width: 100%;
+                    margin: 5px 0;
+                    padding: 8px 15px;
+                    border: none;
+                    border-radius: 4px;
+                    cursor: pointer;
+                    font-weight: 500;
+                    transition: all 0.3s ease;
+                }
+
+                .print-controls .print-btn {
+                    background: #007bff;
+                    color: white;
+                }
+
+                .print-controls .print-btn:hover {
+                    background: #0056b3;
+                }
+
+                .print-controls .close-btn {
+                    background: #6c757d;
+                    color: white;
+                }
+
+                .print-controls .close-btn:hover {
+                    background: #545b62;
+                }
+
+                /* Responsive */
+                @media (max-width: 768px) {
+                    .report-info {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .totales-grid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .report-table th,
+                    .report-table td {
+                        padding: 6px 4px;
+                        font-size: 10px;
+                    }
+
+                    .report-title {
+                        font-size: 24px;
+                    }
+                }
+            </style>
+        </head>
+        <body>
+            <!-- Controles de impresión -->
+            <div class="print-controls no-print">
+                <button class="print-btn" onclick="window.print()">
+                    <i class="fas fa-print"></i> Imprimir Reporte
+                </button>
+                <button class="close-btn" onclick="window.close()">
+                    <i class="fas fa-times"></i> Cerrar Ventana
+                </button>
+            </div>
+
+            <!-- Header del reporte -->
+            <div class="report-header">
+                <h1 class="report-title">Reporte de Pagos</h1>
+                <p class="report-subtitle">Credexa - Sistema de Gestión Financiera</p>
+                <p class="company-info">
+                    Generado el ${new Date().toLocaleDateString('es-CO')} a las ${new Date().toLocaleTimeString('es-CO')}
+                </p>
+            </div>
+
+            <!-- Información del reporte -->
+            <div class="report-info">
+                <div class="info-item">
+                    <span class="info-label">Período del Reporte</span>
+                    <span class="info-value">${currentFilters.fecha_desde || 'N/A'} - ${currentFilters.fecha_hasta || 'N/A'}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Total de Pagos</span>
+                    <span class="info-value">${data.length}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Filtros Aplicados</span>
+                    <span class="info-value">${Object.keys(currentFilters).filter(k => currentFilters[k] && currentFilters[k] !== '').length - 2} filtros</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">Fecha de Generación</span>
+                    <span class="info-value">${new Date().toLocaleDateString('es-CO')}</span>
+                </div>
+            </div>
+
+            <!-- Tabla de datos -->
+            <table class="report-table">
+                <thead>
+                    <tr>
+                        ${headers.map(header => `<th>${header}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.map(row =>
+                        `<tr>${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`
+                    ).join('')}
+                </tbody>
+            </table>
+
+            <!-- Totales -->
+            ${totalesHTML}
+
+            <!-- Footer -->
+            <div class="report-footer">
+                    <p><strong>Credexa</strong></p>
+                <p>Reporte generado automáticamente - Confidencial</p>
+                <p>Página 1 de 1</p>
+            </div>
+        </body>
+        </html>
+    `);
+
+    printWindow.document.close();
+
+    // Esperar a que se cargue completamente antes de mostrar
+    printWindow.onload = function() {
+        printWindow.focus();
+    };
+}
+
+function copiarTabla() {
+    const table = document.getElementById('tabla-resultados');
+
+    if (!table || table.style.display === 'none') {
+        Utils.showError('No hay datos para copiar');
+        return;
+    }
+
+    // Crear una tabla temporal sin las columnas de acciones para copiar
+    const tempTable = table.cloneNode(true);
+
+    // Remover la columna de acciones (última columna)
+    const rows = tempTable.querySelectorAll('tr');
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td, th');
+        if (cells.length > 0) {
+            cells[cells.length - 1].remove(); // Remover última celda (acciones)
+        }
+    });
+
+    // Convertir a texto plano
+    let text = '';
+    const rowsArray = Array.from(tempTable.rows);
+
+    rowsArray.forEach((row, index) => {
+        const cells = Array.from(row.cells);
+        const rowText = cells.map(cell => {
+            // Limpiar el contenido de HTML y badges
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = cell.innerHTML;
+            return tempDiv.textContent || tempDiv.innerText || '';
+        }).join('\t');
+
+        text += rowText + '\n';
+
+        // Agregar línea separadora después del header
+        if (index === 0) {
+            text += ''.padEnd(rowText.length, '-') + '\n';
+        }
+    });
+
+    // Copiar al portapapeles
+    if (navigator.clipboard && window.isSecureContext) {
+        // Usar Clipboard API moderna
+        navigator.clipboard.writeText(text).then(() => {
+            Utils.showSuccess('Tabla copiada al portapapeles');
+        }).catch(err => {
+            console.error('Error copiando:', err);
+            fallbackCopyTextToClipboard(text);
+        });
+    } else {
+        // Fallback para navegadores antiguos
+        fallbackCopyTextToClipboard(text);
+    }
+}
+
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement('textarea');
+    textArea.value = text;
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            Utils.showSuccess('Tabla copiada al portapapeles');
+        } else {
+            Utils.showError('Error al copiar la tabla');
+        }
+    } catch (err) {
+        console.error('Error en fallback copy:', err);
+        Utils.showError('No se pudo copiar la tabla');
+    }
+
+    document.body.removeChild(textArea);
+}
+
+// Inicializar con período del mes actual
+document.addEventListener('DOMContentLoaded', function() {
+    setPeriodo('mes');
+
+    // Mostrar mensaje de ayuda inicial
+    const resumenElement = document.getElementById('resumen-reporte');
+    if (resumenElement) {
+        resumenElement.innerHTML = `
+            <small class="text-info">
+                <i class="fas fa-info-circle"></i>
+                Configure las fechas y filtros deseados, luego haga clic en "Generar Reporte"
+            </small>
+        `;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}Lista de Clientes{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-users"></i>
+                Lista de Clientes
+            </h1>
+            <a href="/clientes/nuevo" class="btn btn-primary">
+                <i class="fas fa-plus"></i>
+                Nuevo Cliente
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros de búsqueda -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-search"></i>
+                    Filtros de Búsqueda
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="filtros-form" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="filtro-nombre" class="form-label">Nombre</label>
+                        <input type="text" class="form-control" id="filtro-nombre" name="nombre" placeholder="Buscar por nombre">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="filtro-cedula" class="form-label">Cédula</label>
+                        <input type="text" class="form-control" id="filtro-cedula" name="cedula" placeholder="Número de cédula">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="filtro-telefono" class="form-label">Teléfono</label>
+                        <input type="text" class="form-control" id="filtro-telefono" name="telefono" placeholder="Número de teléfono">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="filtro-email" class="form-label">Email</label>
+                        <input type="email" class="form-control" id="filtro-email" name="email" placeholder="Dirección de email">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="filtro-estado" class="form-label">Estado</label>
+                        <select class="form-select" id="filtro-estado" name="activo">
+                            <option value="">Todos</option>
+                            <option value="1">Activos</option>
+                            <option value="0">Inactivos</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="button" class="btn btn-primary" id="btn-buscar">
+                            <i class="fas fa-search"></i>
+                            Buscar
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="btn-limpiar">
+                            <i class="fas fa-times"></i>
+                            Limpiar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de clientes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Clientes</h5>
+                <div class="d-flex align-items-center">
+                    <span class="me-2">Mostrar:</span>
+                    <select class="form-select form-select-sm" id="items-por-pagina" style="width: auto;">
+                        <option value="10">10</option>
+                        <option value="25">25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="clientes-container">
+                    <div class="text-center py-4">
+                        <div class="spinner-border" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2">Cargando clientes...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación -->
+<div class="modal fade" id="confirmModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Acción</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p id="confirm-message"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="confirm-action">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentPage = 1;
+let itemsPerPage = 10;
+let currentFilters = {};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Inicializar
+    cargarClientes();
+
+    // Event listeners
+    document.getElementById('btn-buscar').addEventListener('click', function() {
+        currentPage = 1;
+        actualizarFiltros();
+        cargarClientes();
+    });
+
+    document.getElementById('btn-limpiar').addEventListener('click', function() {
+        limpiarFiltros();
+        cargarClientes();
+    });
+
+    document.getElementById('items-por-pagina').addEventListener('change', function() {
+        itemsPerPage = parseInt(this.value);
+        currentPage = 1;
+        cargarClientes();
+    });
+});
+
+function actualizarFiltros() {
+    currentFilters = {
+        nombre: document.getElementById('filtro-nombre').value.trim(),
+        cedula: document.getElementById('filtro-cedula').value.trim(),
+        telefono: document.getElementById('filtro-telefono').value.trim(),
+        email: document.getElementById('filtro-email').value.trim(),
+        activo: document.getElementById('filtro-estado').value
+    };
+}
+
+function limpiarFiltros() {
+    document.getElementById('filtro-nombre').value = '';
+    document.getElementById('filtro-cedula').value = '';
+    document.getElementById('filtro-telefono').value = '';
+    document.getElementById('filtro-email').value = '';
+    document.getElementById('filtro-estado').value = '';
+    currentFilters = {};
+    currentPage = 1;
+}
+
+async function cargarClientes() {
+    try {
+        const params = new URLSearchParams({
+            skip: (currentPage - 1) * itemsPerPage,
+            limit: itemsPerPage,
+            ...currentFilters
+        });
+
+        const response = await Utils.ajax(`/api/clientes?${params}`);
+        mostrarClientes(response);
+
+    } catch (error) {
+        console.error('Error cargando clientes:', error);
+        document.getElementById('clientes-container').innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error al cargar los clientes. Por favor, intenta nuevamente.
+            </div>
+        `;
+    }
+}
+
+function mostrarClientes(data) {
+    const container = document.getElementById('clientes-container');
+
+    if (data.items.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No se encontraron clientes</h5>
+                <p class="text-muted">No hay clientes que coincidan con los criterios de búsqueda.</p>
+                <a href="/clientes/nuevo" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    Crear Primer Cliente
+                </a>
+            </div>
+        `;
+        return;
+    }
+
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nombre</th>
+                        <th>Cédula</th>
+                        <th>Contacto</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+
+    data.items.forEach(cliente => {
+        const estadoBadge = cliente.activo === 1
+            ? '<span class="badge bg-success">Activo</span>'
+            : '<span class="badge bg-secondary">Inactivo</span>';
+
+        html += `
+            <tr>
+                <td>
+                    <div>
+                        <strong>${cliente.nombre_completo}</strong>
+                        ${cliente.ocupacion ? `<br><small class="text-muted">${cliente.ocupacion}</small>` : ''}
+                    </div>
+                </td>
+                <td>${cliente.cedula}</td>
+                <td>
+                    ${cliente.telefono ? `<i class="fas fa-phone"></i> ${cliente.telefono}<br>` : ''}
+                    ${cliente.email ? `<i class="fas fa-envelope"></i> ${cliente.email}` : ''}
+                    ${!cliente.telefono && !cliente.email ? '<span class="text-muted">Sin contacto</span>' : ''}
+                </td>
+                <td>${estadoBadge}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="/clientes/${cliente.id}/editar" class="btn btn-outline-primary" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </a>
+                        ${cliente.activo === 1
+                            ? `<button class="btn btn-outline-danger" onclick="desactivarCliente(${cliente.id})" title="Desactivar">
+                                <i class="fas fa-ban"></i>
+                               </button>`
+                            : `<button class="btn btn-outline-success" onclick="activarCliente(${cliente.id})" title="Activar">
+                                <i class="fas fa-check"></i>
+                               </button>`
+                        }
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    // Paginación
+    if (data.paginas_totales > 1) {
+        html += `
+            <nav aria-label="Paginación de clientes" class="mt-3">
+                <ul class="pagination justify-content-center">
+        `;
+
+        // Anterior
+        if (currentPage > 1) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="cambiarPagina(${currentPage - 1})">Anterior</a></li>`;
+        }
+
+        // Páginas
+        for (let i = Math.max(1, currentPage - 2); i <= Math.min(data.paginas_totales, currentPage + 2); i++) {
+            html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                <a class="page-link" href="#" onclick="cambiarPagina(${i})">${i}</a>
+            </li>`;
+        }
+
+        // Siguiente
+        if (currentPage < data.paginas_totales) {
+            html += `<li class="page-item"><a class="page-link" href="#" onclick="cambiarPagina(${currentPage + 1})">Siguiente</a></li>`;
+        }
+
+        html += `
+                </ul>
+            </nav>
+        `;
+    }
+
+    container.innerHTML = html;
+}
+
+function cambiarPagina(pagina) {
+    currentPage = pagina;
+    cargarClientes();
+}
+
+async function desactivarCliente(clienteId) {
+    if (await Utils.confirm('¿Estás seguro de que deseas desactivar este cliente?', 'Desactivar Cliente')) {
+        try {
+            await Utils.ajax(`/api/clientes/${clienteId}`, { method: 'DELETE' });
+            Utils.showSuccess('Cliente desactivado exitosamente');
+            cargarClientes();
+        } catch (error) {
+            Utils.showError('Error al desactivar el cliente');
+        }
+    }
+}
+
+async function activarCliente(clienteId) {
+    try {
+        await Utils.ajax(`/api/clientes/${clienteId}/activar`, { method: 'POST' });
+        Utils.showSuccess('Cliente activado exitosamente');
+        cargarClientes();
+    } catch (error) {
+        Utils.showError('Error al activar el cliente');
+    }
+}
+</script>
+{% endblock %}

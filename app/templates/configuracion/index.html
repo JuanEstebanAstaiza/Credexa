@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4 text-center">
+                <i class="fas fa-cogs"></i> Configuración del Sistema
+            </h1>
+            <p class="text-center text-muted">Administra la configuración general y gestión de usuarios</p>
+        </div>
+    </div>
+
+    <!-- Tarjetas de opciones de configuración -->
+    <div class="row">
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 border-primary">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users-cog"></i>
+                        Gestión de Usuarios
+                    </h5>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <p class="card-text">
+                        Crea, edita y administra usuarios del sistema. Controla permisos,
+                        activa/desactiva cuentas y resetea contraseñas.
+                    </p>
+                    <div class="mt-auto">
+                        <a href="/configuracion/usuarios" class="btn btn-primary">
+                            <i class="fas fa-arrow-right"></i>
+                            Gestionar Usuarios
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 border-success">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-sliders-h"></i>
+                        Configuración del Sistema
+                    </h5>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <p class="card-text">
+                        Configura parámetros generales del sistema como tasas de interés,
+                        límites, notificaciones y otras configuraciones globales.
+                    </p>
+                    <div class="mt-auto">
+                        <a href="/configuracion/sistema" class="btn btn-success">
+                            <i class="fas fa-arrow-right"></i>
+                            Configurar Sistema
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Información del sistema -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        Información del Sistema
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-primary">{{ user.nombre_completo }}</h4>
+                                <p class="text-muted">Usuario Administrador</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-success">
+                                    <i class="fas fa-shield-alt"></i>
+                                </h4>
+                                <p class="text-muted">Acceso Total al Sistema</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <h4 class="text-info">
+                                    <i class="fas fa-clock"></i>
+                                </h4>
+                                <p class="text-muted">Último acceso: {{ user.ultimo_login.strftime('%d/%m/%Y %H:%M') if user.ultimo_login else 'Nunca' }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Funciones de utilidad para configuración
+const ConfigUtils = {
+    showSuccess: function(message) {
+        // Reutilizar función de app.js si existe
+        if (typeof Utils !== 'undefined' && Utils.showSuccess) {
+            Utils.showSuccess(message);
+        } else {
+            alert('✅ ' + message);
+        }
+    },
+
+    showError: function(message) {
+        if (typeof Utils !== 'undefined' && Utils.showError) {
+            Utils.showError(message);
+        } else {
+            alert('❌ ' + message);
+        }
+    },
+
+    confirm: function(message) {
+        return confirm(message);
+    }
+};
+
+// Inicializar cuando se carga la página
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Página de configuración cargada');
+});
+</script>
+{% endblock %}

@@ -1,0 +1,347 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    {% if modo == "crear" %}
+                        <i class="fas fa-plus-circle"></i> Nuevo Préstamo
+                    {% else %}
+                        <i class="fas fa-edit"></i> Editar Préstamo
+                    {% endif %}
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Mensajes -->
+                <div id="error-message" class="alert alert-danger d-none" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="error-text"></span>
+                </div>
+
+                <div id="success-message" class="alert alert-success d-none" role="alert">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="success-text"></span>
+                </div>
+
+                <!-- Formulario -->
+                <form id="prestamo-form">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="cliente_id" class="form-label">
+                                <i class="fas fa-user"></i> Cliente *
+                            </label>
+                            <select class="form-select" id="cliente_id" name="cliente_id" required>
+                                <option value="">Seleccionar cliente...</option>
+                                {% for cliente in clientes %}
+                                <option value="{{ cliente.id }}" {{ 'selected' if prestamo and prestamo.cliente_id == cliente.id else '' }}>
+                                    {{ cliente.nombre_completo }} - {{ cliente.cedula }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="monto" class="form-label">
+                                <i class="fas fa-money-bill-wave"></i> Monto del Préstamo *
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    id="monto"
+                                    name="monto"
+                                    required
+                                    min="100000"
+                                    step="10000"
+                                    value="{{ prestamo.monto if prestamo else '' }}"
+                                    placeholder="1000000"
+                                >
+                            </div>
+                            <div class="form-text">Mínimo $100.000</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="tasa_interes" class="form-label">
+                                <i class="fas fa-percent"></i> Tasa de Interés Mensual *
+                            </label>
+                            <div class="input-group">
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    id="tasa_interes"
+                                    name="tasa_interes"
+                                    required
+                                    min="0.1"
+                                    max="10"
+                                    step="0.1"
+                                    value="{{ prestamo.tasa_interes if prestamo else '2.5' }}"
+                                >
+                                <span class="input-group-text">%</span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="plazo_meses" class="form-label">
+                                <i class="fas fa-calendar-alt"></i> Plazo en Meses *
+                            </label>
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="plazo_meses"
+                                name="plazo_meses"
+                                required
+                                min="1"
+                                max="360"
+                                value="{{ prestamo.plazo_meses if prestamo else '12' }}"
+                            >
+                            <div class="form-text">Máximo 360 meses (30 años)</div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha_inicio" class="form-label">
+                                <i class="fas fa-calendar-day"></i> Fecha de Inicio *
+                            </label>
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="fecha_inicio"
+                                name="fecha_inicio"
+                                required
+                                value="{{ prestamo.fecha_inicio.strftime('%Y-%m-%d') if prestamo else '' }}"
+                            >
+                        </div>
+
+                        {% if modo == "editar" %}
+                        <div class="col-md-6 mb-3">
+                            <label for="estado" class="form-label">
+                                <i class="fas fa-info-circle"></i> Estado
+                            </label>
+                            <select class="form-select" id="estado" name="estado">
+                                <option value="activo" {{ 'selected' if prestamo and prestamo.estado == 'activo' else '' }}>Activo</option>
+                                <option value="pagado" {{ 'selected' if prestamo and prestamo.estado == 'pagado' else '' }}>Pagado</option>
+                                <option value="mora" {{ 'selected' if prestamo and prestamo.estado == 'mora' else '' }}>En Mora</option>
+                                <option value="refinanciado" {{ 'selected' if prestamo and prestamo.estado == 'refinanciado' else '' }}>Refinanciado</option>
+                            </select>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Cálculos automáticos (solo mostrar en creación) -->
+                    {% if modo == "crear" %}
+                    <div class="card bg-light mb-3">
+                        <div class="card-header">
+                            <h6 class="mb-0">
+                                <i class="fas fa-calculator"></i>
+                                Cálculo Automático
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label class="form-label">Valor de la Cuota:</label>
+                                    <p class="h5 text-primary" id="valor-cuota">$0</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Total de Intereses:</label>
+                                    <p class="h5 text-info" id="total-intereses">$0</p>
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Total a Pagar:</label>
+                                    <p class="h5 text-success" id="total-pagar">$0</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">
+                            <i class="fas fa-sticky-note"></i> Observaciones
+                        </label>
+                        <textarea
+                            class="form-control"
+                            id="observaciones"
+                            name="observaciones"
+                            rows="3"
+                            maxlength="500"
+                            placeholder="Observaciones adicionales sobre el préstamo"
+                        >{{ prestamo.observaciones if prestamo else '' }}</textarea>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="/prestamos" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i>
+                            Volver
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submit-btn">
+                            {% if modo == "crear" %}
+                                <i class="fas fa-save"></i> Crear Préstamo
+                            {% else %}
+                                <i class="fas fa-save"></i> Actualizar Préstamo
+                            {% endif %}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const prestamoForm = document.getElementById('prestamo-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorMessage = document.getElementById('error-message');
+    const successMessage = document.getElementById('success-message');
+    const errorText = document.getElementById('error-text');
+    const successText = document.getElementById('success-text');
+
+    // Elementos de cálculo automático
+    const montoInput = document.getElementById('monto');
+    const tasaInput = document.getElementById('tasa_interes');
+    const plazoInput = document.getElementById('plazo_meses');
+
+    // Configurar validación del formulario
+    prestamoForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!Utils.validateForm(this)) {
+            Utils.showError('Por favor, corrige los errores en el formulario');
+            return;
+        }
+
+        // Recopilar datos del formulario
+        const formData = new FormData(this);
+        const prestamoData = {};
+        formData.forEach((value, key) => {
+            if (value.trim() !== '') {
+                // Convertir valores numéricos
+                if (['monto', 'tasa_interes', 'plazo_meses', 'cliente_id'].includes(key)) {
+                    prestamoData[key] = parseFloat(value) || parseInt(value);
+                } else {
+                    prestamoData[key] = value;
+                }
+            }
+        });
+
+        // Agregar fecha de inicio si no está presente
+        if (!prestamoData.fecha_inicio) {
+            prestamoData.fecha_inicio = new Date().toISOString().split('T')[0];
+        }
+
+        try {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+            // Ocultar mensajes anteriores
+            errorMessage.classList.add('d-none');
+            successMessage.classList.add('d-none');
+
+            let response;
+            {% if modo == "crear" %}
+                response = await Utils.ajax('/api/prestamos', {
+                    method: 'POST',
+                    body: JSON.stringify(prestamoData)
+                });
+                successText.textContent = 'Préstamo creado exitosamente';
+            {% else %}
+                response = await Utils.ajax(`/api/prestamos/{{ prestamo.id }}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(prestamoData)
+                });
+                successText.textContent = 'Préstamo actualizado exitosamente';
+            {% endif %}
+
+            successMessage.classList.remove('d-none');
+
+            // Redirigir después de 2 segundos
+            setTimeout(() => {
+                window.location.href = '/prestamos';
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error guardando préstamo:', error);
+            let errorMsg = 'Error al guardar el préstamo';
+
+            if (error.detail) {
+                errorMsg = error.detail;
+            } else if (error.message) {
+                errorMsg = error.message;
+            }
+
+            errorText.textContent = errorMsg;
+            errorMessage.classList.remove('d-none');
+
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = {% if modo == "crear" %}
+                '<i class="fas fa-save"></i> Crear Préstamo';
+            {% else %}
+                '<i class="fas fa-save"></i> Actualizar Préstamo';
+            {% endif %}
+
+        }
+    });
+
+    // Cálculo automático de cuota (solo en modo creación)
+    {% if modo == "crear" %}
+    function calcularCuota() {
+        const monto = parseFloat(montoInput.value) || 0;
+        const tasa = parseFloat(tasaInput.value) || 0;
+        const plazo = parseInt(plazoInput.value) || 0;
+
+        if (monto > 0 && tasa > 0 && plazo > 0) {
+            const r = tasa / 100; // Tasa mensual en decimal
+            const cuota = monto * (r * Math.pow(1 + r, plazo)) / (Math.pow(1 + r, plazo) - 1);
+            const totalPagar = cuota * plazo;
+            const totalIntereses = totalPagar - monto;
+
+            document.getElementById('valor-cuota').textContent = Utils.formatCurrency(Math.round(cuota));
+            document.getElementById('total-intereses').textContent = Utils.formatCurrency(Math.round(totalIntereses));
+            document.getElementById('total-pagar').textContent = Utils.formatCurrency(Math.round(totalPagar));
+        } else {
+            document.getElementById('valor-cuota').textContent = '$0';
+            document.getElementById('total-intereses').textContent = '$0';
+            document.getElementById('total-pagar').textContent = '$0';
+        }
+    }
+
+    // Eventos para cálculo automático
+    montoInput.addEventListener('input', calcularCuota);
+    tasaInput.addEventListener('input', calcularCuota);
+    plazoInput.addEventListener('input', calcularCuota);
+
+    // Cálculo inicial
+    calcularCuota();
+    {% endif %}
+
+    // Formateo automático de números
+    montoInput.addEventListener('input', function() {
+        let value = this.value.replace(/\D/g, '');
+        if (value) {
+            this.value = parseInt(value).toLocaleString('es-CO');
+        }
+    });
+
+    // Validación de fecha de inicio
+    const fechaInicioInput = document.getElementById('fecha_inicio');
+    const today = new Date().toISOString().split('T')[0];
+    fechaInicioInput.setAttribute('max', today);
+
+    // Si no hay fecha de inicio, establecer la fecha actual
+    if (!fechaInicioInput.value) {
+        fechaInicioInput.value = today;
+    }
+});
+</script>
+{% endblock %}

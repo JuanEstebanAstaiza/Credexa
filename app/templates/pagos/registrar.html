@@ -1,0 +1,350 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Pago{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-cash-register"></i> Registrar Pago
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Mensajes -->
+                <div id="error-message" class="alert alert-danger d-none" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="error-text"></span>
+                </div>
+
+                <div id="success-message" class="alert alert-success d-none" role="alert">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="success-text"></span>
+                </div>
+
+                <!-- Formulario -->
+                <form id="pago-form">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="prestamo_id" class="form-label">
+                                <i class="fas fa-hand-holding-usd"></i> Préstamo *
+                            </label>
+                            <select class="form-select" id="prestamo_id" name="prestamo_id" required>
+                                <option value="">Seleccionar préstamo...</option>
+                                {% for prestamo in prestamos %}
+                                <option value="{{ prestamo.id }}" data-info='{
+                                    "cliente": "{{ prestamo.cliente.nombre_completo }}",
+                                    "monto": {{ prestamo.monto }},
+                                    "cuota": {{ prestamo.valor_cuota }},
+                                    "saldo": {{ prestamo.saldo_pendiente }}
+                                }'>
+                                    #{{ prestamo.id }} - {{ prestamo.cliente.nombre_completo }} (${{ "{:,.0f}".format(prestamo.monto) }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text">Solo préstamos activos disponibles</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha_pago" class="form-label">
+                                <i class="fas fa-calendar-day"></i> Fecha del Pago *
+                            </label>
+                            <input
+                                type="date"
+                                class="form-control"
+                                id="fecha_pago"
+                                name="fecha_pago"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <!-- Información del préstamo seleccionado -->
+                    <div id="prestamo-info" class="card bg-light mb-3 d-none">
+                        <div class="card-body">
+                            <h6 class="card-title">Información del Préstamo</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Cliente:</strong> <span id="info-cliente"></span></p>
+                                    <p class="mb-1"><strong>Valor Cuota:</strong> $<span id="info-cuota"></span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Saldo Pendiente:</strong> $<span id="info-saldo"></span></p>
+                                    <p class="mb-1"><strong>Monto Total:</strong> $<span id="info-monto"></span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="monto_pagado" class="form-label">
+                                <i class="fas fa-money-bill-wave"></i> Monto Pagado *
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    id="monto_pagado"
+                                    name="monto_pagado"
+                                    required
+                                    min="1"
+                                    step="0.01"
+                                    placeholder="0.00"
+                                >
+                            </div>
+                            <div class="form-text">Monto que el cliente está pagando</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="metodo_pago" class="form-label">
+                                <i class="fas fa-credit-card"></i> Método de Pago
+                            </label>
+                            <select class="form-select" id="metodo_pago" name="metodo_pago">
+                                <option value="">Seleccionar método...</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia Bancaria</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="tarjeta">Tarjeta de Crédito/Débito</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="referencia_pago" class="form-label">
+                                <i class="fas fa-hashtag"></i> Referencia/Recibo
+                            </label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="referencia_pago"
+                                name="referencia_pago"
+                                maxlength="100"
+                                placeholder="Número de comprobante, recibo, etc."
+                            >
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">
+                                <i class="fas fa-info-circle"></i> Tipo de Pago
+                            </label>
+                            <div class="form-control-plaintext">
+                                <span id="tipo-pago-info" class="badge bg-secondary">Se determinará automáticamente</span>
+                            </div>
+                            <div class="form-text">
+                                <small>Cuota completa: pago igual o mayor al valor de la cuota<br>
+                                Abono: pago menor al valor de la cuota</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">
+                            <i class="fas fa-sticky-note"></i> Observaciones
+                        </label>
+                        <textarea
+                            class="form-control"
+                            id="observaciones"
+                            name="observaciones"
+                            rows="3"
+                            maxlength="500"
+                            placeholder="Observaciones adicionales sobre el pago"
+                        ></textarea>
+                    </div>
+
+                    <!-- Resumen del pago -->
+                    <div id="pago-resumen" class="card bg-light mb-3 d-none">
+                        <div class="card-body">
+                            <h6 class="card-title">Resumen del Pago</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Monto Pagado:</strong> $<span id="resumen-monto">0</span></p>
+                                    <p class="mb-1"><strong>Capital:</strong> $<span id="resumen-capital">0</span></p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Intereses:</strong> $<span id="resumen-intereses">0</span></p>
+                                    <p class="mb-1"><strong>Tipo:</strong> <span id="resumen-tipo">Desconocido</span></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-flex justify-content-between">
+                        <a href="/pagos" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i>
+                            Volver
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submit-btn">
+                            <i class="fas fa-save"></i>
+                            Registrar Pago
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const pagoForm = document.getElementById('pago-form');
+    const submitBtn = document.getElementById('submit-btn');
+    const errorMessage = document.getElementById('error-message');
+    const successMessage = document.getElementById('success-message');
+    const errorText = document.getElementById('error-text');
+    const successText = document.getElementById('success-text');
+
+    const prestamoSelect = document.getElementById('prestamo_id');
+    const montoInput = document.getElementById('monto_pagado');
+    const fechaPagoInput = document.getElementById('fecha_pago');
+
+    // Configurar fecha actual
+    const today = new Date().toISOString().split('T')[0];
+    fechaPagoInput.value = today;
+    fechaPagoInput.setAttribute('max', today);
+
+    // Event listener para selección de préstamo
+    prestamoSelect.addEventListener('change', function() {
+        mostrarInfoPrestamo();
+    });
+
+    // Event listener para monto pagado
+    montoInput.addEventListener('input', function() {
+        calcularResumenPago();
+    });
+
+    // Configurar validación del formulario
+    pagoForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        if (!Utils.validateForm(this)) {
+            Utils.showError('Por favor, corrige los errores en el formulario');
+            return;
+        }
+
+        // Recopilar datos del formulario
+        const formData = new FormData(this);
+        const pagoData = {};
+        formData.forEach((value, key) => {
+            if (value.trim() !== '') {
+                // Convertir valores numéricos
+                if (key === 'prestamo_id') {
+                    pagoData[key] = parseInt(value);
+                } else if (key === 'monto_pagado') {
+                    pagoData[key] = parseFloat(value);
+                } else {
+                    pagoData[key] = value;
+                }
+            }
+        });
+
+        try {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
+
+            // Ocultar mensajes anteriores
+            errorMessage.classList.add('d-none');
+            successMessage.classList.add('d-none');
+
+            const response = await Utils.ajax('/api/pagos', {
+                method: 'POST',
+                body: JSON.stringify(pagoData)
+            });
+
+            successText.textContent = 'Pago registrado exitosamente';
+            successMessage.classList.remove('d-none');
+
+            // Redirigir después de 2 segundos
+            setTimeout(() => {
+                window.location.href = '/pagos';
+            }, 2000);
+
+        } catch (error) {
+            console.error('Error registrando pago:', error);
+            let errorMsg = 'Error al registrar el pago';
+
+            if (error.detail) {
+                errorMsg = error.detail;
+            } else if (error.message) {
+                errorMsg = error.message;
+            }
+
+            errorText.textContent = errorMsg;
+            errorMessage.classList.remove('d-none');
+
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Registrar Pago';
+        }
+    });
+
+    function mostrarInfoPrestamo() {
+        const selectedOption = prestamoSelect.options[prestamoSelect.selectedIndex];
+        const infoDiv = document.getElementById('prestamo-info');
+
+        if (selectedOption.value && selectedOption.dataset.info) {
+            const info = JSON.parse(selectedOption.dataset.info);
+
+            document.getElementById('info-cliente').textContent = info.cliente;
+            document.getElementById('info-monto').textContent = Utils.formatNumber(info.monto, 0);
+            document.getElementById('info-cuota').textContent = Utils.formatNumber(info.cuota, 0);
+            document.getElementById('info-saldo').textContent = Utils.formatNumber(info.saldo, 0);
+
+            infoDiv.classList.remove('d-none');
+        } else {
+            infoDiv.classList.add('d-none');
+        }
+    }
+
+    function calcularResumenPago() {
+        const selectedOption = prestamoSelect.options[prestamoSelect.selectedIndex];
+        const montoPagado = parseFloat(montoInput.value) || 0;
+        const resumenDiv = document.getElementById('pago-resumen');
+
+        if (selectedOption.value && selectedOption.dataset.info && montoPagado > 0) {
+            const info = JSON.parse(selectedOption.dataset.info);
+            const valorCuota = info.cuota;
+
+            // Lógica simplificada (igual que en el backend)
+            let tipoPago, capitalPagado, interesesPagados;
+
+            if (montoPagado >= valorCuota) {
+                // Pago de cuota completa
+                tipoPago = "Cuota";
+                capitalPagado = valorCuota * 0.7; // 70% capital
+                interesesPagados = valorCuota * 0.3; // 30% intereses
+            } else {
+                // Abono
+                tipoPago = "Abono";
+                capitalPagado = montoPagado * 0.7;
+                interesesPagados = montoPagado * 0.3;
+            }
+
+            // Actualizar resumen
+            document.getElementById('resumen-monto').textContent = Utils.formatNumber(montoPagado, 2);
+            document.getElementById('resumen-capital').textContent = Utils.formatNumber(Math.round(capitalPagado), 0);
+            document.getElementById('resumen-intereses').textContent = Utils.formatNumber(Math.round(interesesPagados), 0);
+            document.getElementById('resumen-tipo').textContent = tipoPago;
+
+            // Actualizar badge de tipo de pago
+            const tipoBadge = document.getElementById('tipo-pago-info');
+            if (tipoPago === "Cuota") {
+                tipoBadge.className = "badge bg-success";
+                tipoBadge.textContent = "Cuota Completa";
+            } else {
+                tipoBadge.className = "badge bg-warning text-dark";
+                tipoBadge.textContent = "Abono";
+            }
+
+            resumenDiv.classList.remove('d-none');
+        } else {
+            resumenDiv.classList.add('d-none');
+        }
+    }
+});
+</script>
+{% endblock %}

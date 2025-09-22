@@ -1,0 +1,373 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4 text-center">
+                <i class="fas fa-user-edit"></i> Mi Perfil
+            </h1>
+            <p class="text-center text-muted">Administra tu información personal y configuración de cuenta</p>
+        </div>
+    </div>
+
+    <!-- Información del perfil -->
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <!-- Tarjeta de información básica -->
+            <div class="card h-100">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user"></i>
+                        Información Personal
+                    </h5>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-3">
+                        <i class="fas fa-user-circle fa-4x text-primary"></i>
+                    </div>
+                    <h4>{{ user.nombre_completo }}</h4>
+                    <p class="text-muted">{{ user.email }}</p>
+                    <span class="badge bg-{% if user.rol_id == 1 %}primary{% else %}success{% endif %}">
+                        {% if user.rol_id == 1 %}Administrador{% else %}Digitador{% endif %}
+                    </span>
+                    <div class="mt-3">
+                        <small class="text-muted">
+                            <i class="fas fa-clock"></i>
+                            Último acceso: {{ user.ultimo_login.strftime('%d/%m/%Y %H:%M') if user.ultimo_login else 'Nunca' }}
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <!-- Formulario de edición -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit"></i>
+                        Editar Información
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="formPerfil">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nombreCompleto" class="form-label">Nombre Completo *</label>
+                                <input type="text" class="form-control" id="nombreCompleto"
+                                       value="{{ user.nombre_completo }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="email" class="form-label">Correo Electrónico *</label>
+                                <input type="email" class="form-control" id="email"
+                                       value="{{ user.email }}" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="username" class="form-label">Nombre de Usuario *</label>
+                                <input type="text" class="form-control" id="username"
+                                       value="{{ user.username }}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tipo de Usuario</label>
+                                <input type="text" class="form-control" readonly
+                                       value="{% if user.rol_id == 1 %}Administrador{% else %}Digitador{% endif %}">
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="passwordActual" class="form-label">Contraseña Actual</label>
+                                <input type="password" class="form-control" id="passwordActual"
+                                       placeholder="Ingresa tu contraseña actual para confirmar cambios">
+                                <div class="form-text">Requiere confirmar cambios</div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="passwordNueva" class="form-label">Nueva Contraseña</label>
+                                <input type="password" class="form-control" id="passwordNueva"
+                                       placeholder="Opcional: nueva contraseña">
+                                <div class="form-text">Dejar vacío para mantener la actual</div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <button type="button" class="btn btn-secondary" onclick="restaurarCambios()">
+                                <i class="fas fa-undo"></i> Restaurar
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Información adicional -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i>
+                        Información de la Cuenta
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-5">Estado:</dt>
+                                <dd class="col-sm-7">
+                                    <span class="badge bg-{% if user.activo %}success{% else %}danger{% endif %}">
+                                        {% if user.activo %}Activa{% else %}Inactiva{% endif %}
+                                    </span>
+                                </dd>
+
+                                <dt class="col-sm-5">Rol:</dt>
+                                <dd class="col-sm-7">
+                                    {% if user.rol_id == 1 %}Administrador{% else %}Digitador{% endif %}
+                                </dd>
+
+                                <dt class="col-sm-5">Creado:</dt>
+                                <dd class="col-sm-7">
+                                    {{ user.creado_en.strftime('%d/%m/%Y %H:%M') if user.creado_en else 'N/A' }}
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-5">ID Usuario:</dt>
+                                <dd class="col-sm-7">{{ user.id }}</dd>
+
+                                <dt class="col-sm-5">Último Login:</dt>
+                                <dd class="col-sm-7">
+                                    {{ user.ultimo_login.strftime('%d/%m/%Y %H:%M') if user.ultimo_login else 'Nunca' }}
+                                </dd>
+
+                                <dt class="col-sm-5">Versión:</dt>
+                                <dd class="col-sm-7">Credexa v1.0</dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de confirmación de cambios -->
+<div class="modal fade" id="modalConfirmarCambio" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Confirmar Cambios
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que deseas guardar los cambios en tu perfil?</p>
+                <div id="cambiosResumen" class="alert alert-info">
+                    <!-- Los cambios se mostrarán aquí -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="confirmarGuardarCambios()">Confirmar</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Variables para controlar cambios
+let cambiosPendientes = {};
+let datosOriginales = {
+    nombre_completo: "{{ user.nombre_completo }}",
+    email: "{{ user.email }}",
+    username: "{{ user.username }}"
+};
+
+// Cargar datos al inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    // Guardar valores originales
+    document.querySelectorAll('#formPerfil input').forEach(input => {
+        if (input.id !== 'passwordActual' && input.id !== 'passwordNueva') {
+            input.dataset.original = input.value;
+        }
+    });
+
+    console.log('Perfil cargado correctamente');
+});
+
+// Validar formulario antes de enviar
+document.getElementById('formPerfil').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    if (!validarFormulario()) {
+        return;
+    }
+
+    mostrarConfirmacionCambios();
+});
+
+function validarFormulario() {
+    const form = document.getElementById('formPerfil');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return false;
+    }
+
+    // Validar email
+    const email = document.getElementById('email').value;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        Utils.showError('Por favor ingresa un email válido');
+        return false;
+    }
+
+    // Validar contraseña nueva si se proporciona
+    const passwordNueva = document.getElementById('passwordNueva').value;
+    if (passwordNueva && passwordNueva.length < 6) {
+        Utils.showError('La nueva contraseña debe tener al menos 6 caracteres');
+        return false;
+    }
+
+    return true;
+}
+
+function mostrarConfirmacionCambios() {
+    const cambios = detectarCambios();
+    cambiosPendientes = cambios;
+
+    if (Object.keys(cambios).length === 0) {
+        Utils.showInfo('No se detectaron cambios');
+        return;
+    }
+
+    let resumenHTML = '<strong>Cambios detectados:</strong><ul class="mb-0 mt-2">';
+    for (const [campo, valor] of Object.entries(cambios)) {
+        const nombreCampo = {
+            'nombre_completo': 'Nombre completo',
+            'email': 'Email',
+            'username': 'Nombre de usuario',
+            'password': 'Contraseña'
+        }[campo] || campo;
+
+        resumenHTML += `<li>${nombreCampo}: <code>${valor.nuevo}</code></li>`;
+    }
+    resumenHTML += '</ul>';
+
+    document.getElementById('cambiosResumen').innerHTML = resumenHTML;
+    new bootstrap.Modal(document.getElementById('modalConfirmarCambio')).show();
+}
+
+function detectarCambios() {
+    const cambios = {};
+
+    // Verificar campos de texto
+    const campos = ['nombreCompleto', 'email', 'username'];
+    campos.forEach(campo => {
+        const elemento = document.getElementById(campo);
+        const valorActual = elemento.value.trim();
+        const valorOriginal = elemento.dataset.original || datosOriginales[campo.replace('Completo', '_completo')];
+
+        if (valorActual !== valorOriginal) {
+            cambios[campo.replace('Completo', '_completo')] = {
+                anterior: valorOriginal,
+                nuevo: valorActual
+            };
+        }
+    });
+
+    // Verificar contraseña nueva
+    const passwordNueva = document.getElementById('passwordNueva').value;
+    if (passwordNueva) {
+        cambios.password = {
+            anterior: '*****',
+            nuevo: '***** (nueva)'
+        };
+    }
+
+    return cambios;
+}
+
+async function confirmarGuardarCambios() {
+    const passwordActual = document.getElementById('passwordActual').value;
+
+    if (!passwordActual) {
+        Utils.showError('Debes ingresar tu contraseña actual para confirmar los cambios');
+        return;
+    }
+
+    try {
+        const datosActualizacion = {
+            nombre_completo: cambiosPendientes.nombre_completo?.nuevo || datosOriginales.nombre_completo,
+            username: cambiosPendientes.username?.nuevo || datosOriginales.username,
+            email: cambiosPendientes.email?.nuevo || datosOriginales.email,
+            password_actual: passwordActual
+        };
+
+        if (cambiosPendientes.password) {
+            datosActualizacion.password_nueva = document.getElementById('passwordNueva').value;
+        }
+
+        // Crear FormData para enviar como formulario
+        const formData = new FormData();
+        formData.append('nombre_completo', datosActualizacion.nombre_completo);
+        formData.append('username', datosActualizacion.username);
+        formData.append('email', datosActualizacion.email);
+        formData.append('password_actual', datosActualizacion.password_actual);
+        if (datosActualizacion.password_nueva) {
+            formData.append('password_nueva', datosActualizacion.password_nueva);
+        }
+
+        const response = await Utils.ajax('/api/perfil', {
+            method: 'PUT',
+            body: formData,
+            headers: {} // No establecer Content-Type para que el navegador lo haga automáticamente
+        });
+
+        Utils.showSuccess('Perfil actualizado exitosamente');
+
+        // Cerrar modal y recargar página
+        bootstrap.Modal.getInstance(document.getElementById('modalConfirmarCambio')).hide();
+
+        // Actualizar datos originales
+        Object.keys(cambiosPendientes).forEach(key => {
+            if (key !== 'password') {
+                datosOriginales[key] = cambiosPendientes[key].nuevo;
+            }
+        });
+
+        cambiosPendientes = {};
+
+        // Recargar página después de 2 segundos
+        setTimeout(() => {
+            window.location.reload();
+        }, 2000);
+
+    } catch (error) {
+        console.error('Error actualizando perfil:', error);
+        Utils.showError('Error al actualizar el perfil: ' + error.message);
+    }
+}
+
+function restaurarCambios() {
+    // Restaurar valores originales
+    document.querySelectorAll('#formPerfil input').forEach(input => {
+        if (input.id !== 'passwordActual' && input.id !== 'passwordNueva') {
+            input.value = input.dataset.original || datosOriginales[input.id.replace('Completo', '_completo')];
+        } else {
+            input.value = '';
+        }
+    });
+
+    cambiosPendientes = {};
+    Utils.showInfo('Cambios restaurados');
+}
+</script>
+{% endblock %}

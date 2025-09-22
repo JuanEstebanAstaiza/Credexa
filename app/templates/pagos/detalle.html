@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Pago #{{ pago.id }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-receipt"></i>
+                Pago #{{ pago.id }}
+            </h1>
+            <div>
+                <a href="/pagos" class="btn btn-secondary me-2">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver
+                </a>
+                <button class="btn btn-danger" onclick="eliminarPago({{ pago.id }})">
+                    <i class="fas fa-trash"></i>
+                    Eliminar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información del pago -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-info-circle"></i>
+                    Información del Pago
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Préstamo Asociado</h6>
+                        <p class="mb-3">
+                            <a href="/prestamos/{{ pago.prestamo_id }}/detalle" class="text-decoration-none">
+                                Préstamo #{{ pago.prestamo_id }}
+                            </a>
+                            {% if pago.prestamo and pago.prestamo.cliente %}
+                            <br>
+                            <small class="text-muted">
+                                Cliente: {{ pago.prestamo.cliente.nombre_completo }}
+                            </small>
+                            {% endif %}
+                        </p>
+
+                        <h6>Monto Pagado</h6>
+                        <p class="h4 text-success mb-3">{{ "{:,.0f}".format(pago.monto_pagado) }} COP</p>
+
+                        <h6>Tipo de Pago</h6>
+                        <p class="mb-3">
+                            {% if pago.tipo_pago == 'cuota' %}
+                                <span class="badge bg-success">Cuota Completa</span>
+                            {% elif pago.tipo_pago == 'abono' %}
+                                <span class="badge bg-warning text-dark">Abono</span>
+                            {% elif pago.tipo_pago == 'refinanciacion' %}
+                                <span class="badge bg-info">Refinanciación</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ pago.tipo_pago }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Fecha del Pago</h6>
+                        <p class="mb-3">{{ pago.fecha_pago.strftime('%d/%m/%Y') }}</p>
+
+                        <h6>Método de Pago</h6>
+                        <p class="mb-3">
+                            {% if pago.metodo_pago == 'efectivo' %}
+                                <span class="badge bg-success">Efectivo</span>
+                            {% elif pago.metodo_pago == 'transferencia' %}
+                                <span class="badge bg-primary">Transferencia</span>
+                            {% elif pago.metodo_pago == 'cheque' %}
+                                <span class="badge bg-warning text-dark">Cheque</span>
+                            {% elif pago.metodo_pago == 'tarjeta' %}
+                                <span class="badge bg-info">Tarjeta</span>
+                            {% else %}
+                                <span class="badge bg-light text-dark">{{ pago.metodo_pago or 'No especificado' }}</span>
+                            {% endif %}
+                        </p>
+
+                        <h6>Número de Cuota</h6>
+                        <p class="mb-3">{{ pago.numero_cuota or 'N/A' }}</p>
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Referencia/Recibo</h6>
+                        <p class="mb-3">{{ pago.referencia_pago or 'No especificado' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Fecha de Registro</h6>
+                        <p class="mb-3">{{ pago.creado_en.strftime('%d/%m/%Y %H:%M') }}</p>
+                    </div>
+                </div>
+
+                {% if pago.observaciones %}
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Observaciones</h6>
+                        <p class="mb-0">{{ pago.observaciones }}</p>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Desglose del pago -->
+        <div class="card mb-3">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-calculator"></i>
+                    Desglose del Pago
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <small class="text-muted">Monto Total Pagado:</small>
+                    <div class="h6 text-success">{{ "{:,.0f}".format(pago.monto_pagado) }} COP</div>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Capital:</small>
+                    <div class="h6 text-primary">{{ "{:,.0f}".format(pago.capital_pagado) }} COP</div>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Intereses:</small>
+                    <div class="h6 text-info">{{ "{:,.0f}".format(pago.intereses_pagados) }} COP</div>
+                </div>
+                <hr>
+                <div class="mb-0">
+                    <small class="text-muted">Tipo de Transacción:</small>
+                    <div class="h6">
+                        {% if pago.tipo_pago == 'cuota' %}
+                            Pago de Cuota
+                        {% elif pago.tipo_pago == 'abono' %}
+                            Abono al Capital
+                        {% else %}
+                            {{ pago.tipo_pago }}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información del préstamo -->
+        {% if pago.prestamo %}
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    Estado del Préstamo
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-2">
+                    <small class="text-muted">Estado Actual:</small>
+                    <div>
+                        {% if pago.prestamo.estado == 'activo' %}
+                            <span class="badge bg-success">Activo</span>
+                        {% elif pago.prestamo.estado == 'pagado' %}
+                            <span class="badge bg-primary">Pagado</span>
+                        {% elif pago.prestamo.estado == 'mora' %}
+                            <span class="badge bg-danger">En Mora</span>
+                        {% else %}
+                            <span class="badge bg-secondary">{{ pago.prestamo.estado }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Saldo Pendiente:</small>
+                    <div class="h6 text-warning">{{ "{:,.0f}".format(pago.prestamo.saldo_pendiente) }} COP</div>
+                </div>
+                <div class="mb-2">
+                    <small class="text-muted">Cuotas Pagadas:</small>
+                    <div class="h6">{{ pago.prestamo.cuotas_pagadas }} de {{ pago.prestamo.numero_cuotas }}</div>
+                </div>
+                <div class="progress mb-2" style="height: 8px;">
+                    <div class="progress-bar" role="progressbar"
+                         style="width: {{ (pago.prestamo.cuotas_pagadas / pago.prestamo.numero_cuotas * 100) if pago.prestamo.numero_cuotas > 0 else 0 }}%"
+                         aria-valuenow="{{ (pago.prestamo.cuotas_pagadas / pago.prestamo.numero_cuotas * 100) if pago.prestamo.numero_cuotas > 0 else 0 }}"
+                         aria-valuemin="0" aria-valuemax="100">
+                    </div>
+                </div>
+                <small class="text-muted">
+                    Progreso: {{ "{:.1f}".format((pago.prestamo.cuotas_pagadas / pago.prestamo.numero_cuotas * 100) if pago.prestamo.numero_cuotas > 0 else 0) }}%
+                </small>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Modal de confirmación de eliminación -->
+<div class="modal fade" id="confirmDeleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirmar Eliminación</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Advertencia:</strong> Esta acción no se puede deshacer.
+                </div>
+                <p>¿Está seguro de que desea eliminar este pago? Esta acción:</p>
+                <ul>
+                    <li>Revertirá el saldo del préstamo</li>
+                    <li>Podría cambiar el estado del préstamo</li>
+                    <li>Afectará los registros contables</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">
+                    <i class="fas fa-trash"></i>
+                    Eliminar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let pagoIdToDelete = null;
+
+function eliminarPago(pagoId) {
+    pagoIdToDelete = pagoId;
+    const modal = new bootstrap.Modal(document.getElementById('confirmDeleteModal'));
+    modal.show();
+}
+
+// Configurar el botón de confirmación de eliminación
+document.getElementById('confirmDeleteBtn').addEventListener('click', async function() {
+    if (!pagoIdToDelete) return;
+
+    try {
+        this.disabled = true;
+        this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Eliminando...';
+
+        const response = await Utils.ajax(`/api/pagos/${pagoIdToDelete}`, {
+            method: 'DELETE'
+        });
+
+        Utils.showSuccess('Pago eliminado exitosamente');
+
+        // Cerrar modal y redirigir
+        bootstrap.Modal.getInstance(document.getElementById('confirmDeleteModal')).hide();
+        setTimeout(() => {
+            window.location.href = '/pagos';
+        }, 1500);
+
+    } catch (error) {
+        console.error('Error eliminando pago:', error);
+        let errorMsg = 'Error al eliminar el pago';
+
+        if (error.detail) {
+            errorMsg = error.detail;
+        }
+
+        Utils.showError(errorMsg);
+
+        this.disabled = false;
+        this.innerHTML = '<i class="fas fa-trash"></i> Eliminar Pago';
+    }
+});
+
+// Limpiar la variable cuando se cierre el modal
+document.getElementById('confirmDeleteModal').addEventListener('hidden.bs.modal', function() {
+    pagoIdToDelete = null;
+    document.getElementById('confirmDeleteBtn').disabled = false;
+    document.getElementById('confirmDeleteBtn').innerHTML = '<i class="fas fa-trash"></i> Eliminar Pago';
+});
+</script>
+{% endblock %}

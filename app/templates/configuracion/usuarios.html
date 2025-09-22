@@ -1,0 +1,441 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4 text-center">
+                <i class="fas fa-users-cog"></i> Gestión de Usuarios
+            </h1>
+            <p class="text-center text-muted">Administra usuarios, permisos y accesos del sistema</p>
+        </div>
+    </div>
+
+    <!-- Botones de acción -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalCrearUsuario">
+                <i class="fas fa-user-plus"></i> Crear Nuevo Usuario
+            </button>
+            <button class="btn btn-outline-secondary" onclick="cargarUsuarios()">
+                <i class="fas fa-sync-alt"></i> Actualizar Lista
+            </button>
+        </div>
+    </div>
+
+    <!-- Tabla de usuarios -->
+    <div class="card">
+        <div class="card-header">
+            <h5 class="mb-0">
+                <i class="fas fa-users"></i>
+                Lista de Usuarios
+            </h5>
+        </div>
+        <div class="card-body">
+            <!-- Filtros -->
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <select class="form-select" id="filtroEstado">
+                        <option value="">Todos los estados</option>
+                        <option value="true">Activos</option>
+                        <option value="false">Inactivos</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <input type="text" class="form-control" id="filtroNombre" placeholder="Buscar por nombre...">
+                </div>
+                <div class="col-md-4">
+                    <button class="btn btn-outline-primary" onclick="aplicarFiltros()">
+                        <i class="fas fa-filter"></i> Aplicar Filtros
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="text-center py-4" style="display: none;">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Cargando...</span>
+                </div>
+                <p class="mt-2">Cargando usuarios...</p>
+            </div>
+
+            <!-- Tabla -->
+            <div class="table-responsive">
+                <table class="table table-striped table-hover" id="tablaUsuarios" style="display: none;">
+                    <thead class="table-dark">
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre Completo</th>
+                            <th>Usuario</th>
+                            <th>Email</th>
+                            <th>Rol</th>
+                            <th>Estado</th>
+                            <th>Último Acceso</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cuerpoTabla">
+                        <!-- Los usuarios se cargarán aquí -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Sin resultados -->
+            <div id="sinResultados" class="text-center py-5" style="display: none;">
+                <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                <h4>No se encontraron usuarios</h4>
+                <p class="text-muted">Intenta ajustar los filtros de búsqueda</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Crear Usuario -->
+<div class="modal fade" id="modalCrearUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-plus"></i> Crear Nuevo Usuario
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCrearUsuario">
+                    <div class="mb-3">
+                        <label for="nombreCompleto" class="form-label">Nombre Completo *</label>
+                        <input type="text" class="form-control" id="nombreCompleto" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="username" class="form-label">Nombre de Usuario *</label>
+                        <input type="text" class="form-control" id="username" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="password" class="form-label">Contraseña *</label>
+                        <input type="password" class="form-control" id="password" required minlength="6">
+                        <div class="form-text">Mínimo 6 caracteres</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="rolId" class="form-label">Rol *</label>
+                        <select class="form-select" id="rolId" required>
+                            <option value="">Seleccionar rol...</option>
+                            <option value="1">Administrador</option>
+                            <option value="2">Digitador</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="crearUsuario()">Crear Usuario</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Usuario -->
+<div class="modal fade" id="modalEditarUsuario" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-user-edit"></i> Editar Usuario
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarUsuario">
+                    <input type="hidden" id="editUserId">
+                    <div class="mb-3">
+                        <label for="editNombreCompleto" class="form-label">Nombre Completo *</label>
+                        <input type="text" class="form-control" id="editNombreCompleto" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editUsername" class="form-label">Nombre de Usuario *</label>
+                        <input type="text" class="form-control" id="editUsername" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editEmail" class="form-label">Email *</label>
+                        <input type="email" class="form-control" id="editEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="editRolId" class="form-label">Rol *</label>
+                        <select class="form-select" id="editRolId" required>
+                            <option value="">Seleccionar rol...</option>
+                            <option value="1">Administrador</option>
+                            <option value="2">Digitador</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="actualizarUsuario()">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Variables globales
+let usuariosActuales = [];
+
+// Cargar usuarios al inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    cargarUsuarios();
+});
+
+// Funciones principales
+async function cargarUsuarios() {
+    try {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('tablaUsuarios').style.display = 'none';
+        document.getElementById('sinResultados').style.display = 'none';
+
+        const response = await Utils.ajax('/api/configuracion/usuarios');
+        usuariosActuales = response;
+        mostrarUsuarios(response);
+
+    } catch (error) {
+        console.error('Error cargando usuarios:', error);
+        Utils.showError('Error al cargar la lista de usuarios');
+    } finally {
+        document.getElementById('loading').style.display = 'none';
+    }
+}
+
+function mostrarUsuarios(usuarios) {
+    const tbody = document.getElementById('cuerpoTabla');
+    tbody.innerHTML = '';
+
+    if (usuarios.length === 0) {
+        document.getElementById('sinResultados').style.display = 'block';
+        document.getElementById('tablaUsuarios').style.display = 'none';
+        return;
+    }
+
+    usuarios.forEach(usuario => {
+        const estadoBadge = usuario.activo
+            ? '<span class="badge bg-success">Activo</span>'
+            : '<span class="badge bg-danger">Inactivo</span>';
+
+        const rolNombre = usuario.rol_id === 1 ? 'Administrador' : 'Digitador';
+
+        const ultimoAcceso = usuario.ultimo_login
+            ? new Date(usuario.ultimo_login).toLocaleDateString('es-CO')
+            : 'Nunca';
+
+        const row = `
+            <tr>
+                <td>${usuario.id}</td>
+                <td>${usuario.nombre_completo}</td>
+                <td>${usuario.username}</td>
+                <td>${usuario.email}</td>
+                <td>${rolNombre}</td>
+                <td>${estadoBadge}</td>
+                <td>${ultimoAcceso}</td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-primary" onclick="editarUsuario(${usuario.id})" title="Editar">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-outline-warning" onclick="toggleEstadoUsuario(${usuario.id}, ${!usuario.activo})"
+                                title="${usuario.activo ? 'Desactivar' : 'Activar'}">
+                            <i class="fas ${usuario.activo ? 'fa-ban' : 'fa-check'}"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="resetPassword(${usuario.id})" title="Resetear Contraseña">
+                            <i class="fas fa-key"></i>
+                        </button>
+                        <button class="btn btn-outline-danger" onclick="eliminarUsuario(${usuario.id})" title="Eliminar">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+
+    document.getElementById('tablaUsuarios').style.display = 'table';
+    document.getElementById('sinResultados').style.display = 'none';
+}
+
+async function crearUsuario() {
+    const form = document.getElementById('formCrearUsuario');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const usuarioData = {
+        nombre_completo: document.getElementById('nombreCompleto').value,
+        username: document.getElementById('username').value,
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+        rol_id: parseInt(document.getElementById('rolId').value)
+    };
+
+    try {
+        await Utils.ajax('/api/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(usuarioData)
+        });
+
+        Utils.showSuccess('Usuario creado exitosamente');
+        bootstrap.Modal.getInstance(document.getElementById('modalCrearUsuario')).hide();
+        form.reset();
+        cargarUsuarios();
+
+    } catch (error) {
+        console.error('Error creando usuario:', error);
+        Utils.showError('Error al crear el usuario: ' + error.message);
+    }
+}
+
+async function editarUsuario(userId) {
+    const usuario = usuariosActuales.find(u => u.id === userId);
+    if (!usuario) {
+        Utils.showError('Usuario no encontrado');
+        return;
+    }
+
+    // Llenar el formulario de edición
+    document.getElementById('editUserId').value = usuario.id;
+    document.getElementById('editNombreCompleto').value = usuario.nombre_completo;
+    document.getElementById('editUsername').value = usuario.username;
+    document.getElementById('editEmail').value = usuario.email;
+    document.getElementById('editRolId').value = usuario.rol_id;
+
+    // Mostrar modal
+    new bootstrap.Modal(document.getElementById('modalEditarUsuario')).show();
+}
+
+async function actualizarUsuario() {
+    const form = document.getElementById('formEditarUsuario');
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const userId = parseInt(document.getElementById('editUserId').value);
+    const usuarioData = {
+        nombre_completo: document.getElementById('editNombreCompleto').value,
+        username: document.getElementById('editUsername').value,
+        email: document.getElementById('editEmail').value,
+        rol_id: parseInt(document.getElementById('editRolId').value)
+    };
+
+    try {
+        await Utils.ajax(`/api/auth/users/${userId}`, {
+            method: 'PUT',
+            body: JSON.stringify(usuarioData)
+        });
+
+        Utils.showSuccess('Usuario actualizado exitosamente');
+        bootstrap.Modal.getInstance(document.getElementById('modalEditarUsuario')).hide();
+        cargarUsuarios();
+
+    } catch (error) {
+        console.error('Error actualizando usuario:', error);
+        Utils.showError('Error al actualizar el usuario: ' + error.message);
+    }
+}
+
+async function toggleEstadoUsuario(userId, nuevoEstado) {
+    if (!confirm(`¿Está seguro de ${nuevoEstado ? 'activar' : 'desactivar'} este usuario?`)) {
+        return;
+    }
+
+    try {
+        await Utils.ajax(`/api/configuracion/usuarios/${userId}/estado?activo=${nuevoEstado}`, {
+            method: 'PUT'
+        });
+
+        Utils.showSuccess(`Usuario ${nuevoEstado ? 'activado' : 'desactivado'} exitosamente`);
+        cargarUsuarios();
+
+    } catch (error) {
+        console.error('Error cambiando estado:', error);
+        Utils.showError('Error al cambiar el estado del usuario');
+    }
+}
+
+async function resetPassword(userId) {
+    const nuevaPassword = prompt('Ingrese la nueva contraseña (mínimo 6 caracteres):');
+    if (!nuevaPassword || nuevaPassword.length < 6) {
+        Utils.showError('La contraseña debe tener al menos 6 caracteres');
+        return;
+    }
+
+    if (!confirm('¿Está seguro de resetear la contraseña de este usuario?')) {
+        return;
+    }
+
+    try {
+        await Utils.ajax(`/api/configuracion/usuarios/${userId}/reset-password`, {
+            method: 'PUT',
+            body: nuevaPassword,
+            headers: {
+                'Content-Type': 'text/plain'
+            }
+        });
+
+        Utils.showSuccess('Contraseña reseteada exitosamente');
+
+    } catch (error) {
+        console.error('Error reseteando contraseña:', error);
+        Utils.showError('Error al resetear la contraseña');
+    }
+}
+
+async function eliminarUsuario(userId) {
+    const usuario = usuariosActuales.find(u => u.id === userId);
+    if (!usuario) return;
+
+    if (!confirm(`¿Está seguro de eliminar al usuario "${usuario.nombre_completo}"? Esta acción no se puede deshacer.`)) {
+        return;
+    }
+
+    try {
+        await Utils.ajax(`/api/auth/users/${userId}`, {
+            method: 'DELETE'
+        });
+
+        Utils.showSuccess('Usuario eliminado exitosamente');
+        cargarUsuarios();
+
+    } catch (error) {
+        console.error('Error eliminando usuario:', error);
+        Utils.showError('Error al eliminar el usuario');
+    }
+}
+
+function aplicarFiltros() {
+    const filtroEstado = document.getElementById('filtroEstado').value;
+    const filtroNombre = document.getElementById('filtroNombre').value.toLowerCase();
+
+    let usuariosFiltrados = usuariosActuales;
+
+    if (filtroEstado) {
+        const estadoBool = filtroEstado === 'true';
+        usuariosFiltrados = usuariosFiltrados.filter(u => u.activo === estadoBool);
+    }
+
+    if (filtroNombre) {
+        usuariosFiltrados = usuariosFiltrados.filter(u =>
+            u.nombre_completo.toLowerCase().includes(filtroNombre) ||
+            u.username.toLowerCase().includes(filtroNombre) ||
+            u.email.toLowerCase().includes(filtroNombre)
+        );
+    }
+
+    mostrarUsuarios(usuariosFiltrados);
+}
+</script>
+{% endblock %}

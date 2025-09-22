@@ -1,0 +1,548 @@
+{% extends "base.html" %}
+
+{% block title %}Reportes del Sistema{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="fas fa-chart-line"></i>
+                Reportes del Sistema
+            </h1>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas Generales -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-tachometer-alt"></i>
+                    Estadísticas Generales
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="estadisticas-generales">
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <h3 id="total-pagos">-</h3>
+                                <p class="mb-0">Total Pagos</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <h3 id="monto-total">-</h3>
+                                <p class="mb-0">Monto Total</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <h3 id="pagos-mes">-</h3>
+                                <p class="mb-0">Pagos del Mes</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 mb-3">
+                        <div class="card bg-warning text-white">
+                            <div class="card-body text-center">
+                                <h3 id="clientes-morosos">-</h3>
+                                <p class="mb-0">Clientes Morosos</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-center">
+                    <button class="btn btn-outline-primary" onclick="cargarEstadisticas()">
+                        <i class="fas fa-sync-alt"></i>
+                        Actualizar Estadísticas
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficas Avanzadas -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie"></i>
+                    Distribución de Créditos
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartPrestamos" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar"></i>
+                    Pagos por Método
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartMetodosPago" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-line"></i>
+                    Evolución de Pagos (Últimos 6 meses)
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartEvolucionPagos" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-donut"></i>
+                    Tipos de Pago
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="chartTiposPago" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Opciones de Reportes -->
+                <div class="row">
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 border-primary">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-calendar-check"></i>
+                                    Reportes de Pagos
+                                </h5>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <p class="card-text">Genera reportes detallados de pagos realizados en un período específico con filtros avanzados.</p>
+                                <div class="mb-2">
+                                    <small class="text-success">
+                                        <i class="fas fa-check"></i>
+                                        Incluye: Excel, PDF, CSV, Impresión
+                                    </small>
+                                </div>
+                                <div class="mt-auto">
+                                    <a href="/reportes/pagos" class="btn btn-primary">
+                                        <i class="fas fa-arrow-right"></i>
+                                        Generar Reportes de Pagos
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-4">
+                        <div class="card h-100 border-warning">
+                            <div class="card-header bg-warning">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    Clientes Morosos
+                                </h5>
+                            </div>
+                            <div class="card-body d-flex flex-column">
+                                <p class="card-text">Identifica clientes con pagos pendientes y genera alertas de mora con acciones recomendadas.</p>
+                                <div class="mb-2">
+                                    <small class="text-success">
+                                        <i class="fas fa-check"></i>
+                                        Incluye: Excel, PDF, CSV, Alertas
+                                    </small>
+                                </div>
+                                <div class="mt-auto">
+                                    <a href="/reportes/morosos" class="btn btn-warning">
+                                        <i class="fas fa-arrow-right"></i>
+                                        Ver Clientes Morosos
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+<!-- Funcionalidades Completas -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-check-circle"></i>
+                    Funcionalidades Completas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-file-excel text-success me-3 fa-2x"></i>
+                            <div>
+                                <h6 class="mb-1 text-success">
+                                    <i class="fas fa-check"></i>
+                                    Exportar a Excel
+                                </h6>
+                                <small class="text-muted">Disponible en reportes de pagos y morosos</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-file-pdf text-danger me-3 fa-2x"></i>
+                            <div>
+                                <h6 class="mb-1 text-success">
+                                    <i class="fas fa-check"></i>
+                                    Exportar a PDF
+                                </h6>
+                                <small class="text-muted">Reportes formateados profesionalmente</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-chart-bar text-primary me-3 fa-2x"></i>
+                            <div>
+                                <h6 class="mb-1 text-success">
+                                    <i class="fas fa-check"></i>
+                                    Gráficos Avanzados
+                                </h6>
+                                <small class="text-muted">Dashboard interactivo con múltiples visualizaciones</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Funcionalidades Adicionales -->
+                <div class="row mt-4">
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-file-csv text-info me-3 fa-2x"></i>
+                            <div>
+                                <h6 class="mb-1 text-success">
+                                    <i class="fas fa-check"></i>
+                                    Exportar a CSV
+                                </h6>
+                                <small class="text-muted">Datos puros para análisis avanzado</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-print text-secondary me-3 fa-2x"></i>
+                            <div>
+                                <h6 class="mb-1 text-success">
+                                    <i class="fas fa-check"></i>
+                                    Sistema de Impresión
+                                </h6>
+                                <small class="text-muted">Reportes optimizados para impresión</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumen de Estadísticas -->
+                <hr class="my-4">
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="text-center mb-3">
+                            <i class="fas fa-chart-line"></i>
+                            Resumen del Sistema
+                        </h6>
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-primary mb-1" id="total-pagos-dashboard">-</h4>
+                                    <small class="text-muted">Total Pagos</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-success mb-1" id="monto-total-dashboard">-</h4>
+                                    <small class="text-muted">Monto Total</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-info mb-1" id="prestamos-activos-dashboard">-</h4>
+                                    <small class="text-muted">Créditos Activos</small>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="border rounded p-3">
+                                    <h4 class="text-warning mb-1" id="clientes-morosos-dashboard">-</h4>
+                                    <small class="text-muted">Clientes Morosos</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Variables globales para las gráficas
+let chartPrestamos, chartMetodosPago, chartEvolucionPagos, chartTiposPago;
+
+async function cargarEstadisticas() {
+    try {
+        const response = await Utils.ajax('/api/reportes/estadisticas');
+        actualizarEstadisticas(response);
+    } catch (error) {
+        console.error('Error cargando estadísticas:', error);
+        Utils.showError('Error al cargar las estadísticas');
+    }
+}
+
+function actualizarEstadisticas(data) {
+    // Estadísticas principales
+    document.getElementById('total-pagos').textContent = Utils.formatNumber(data.total_pagos);
+    document.getElementById('monto-total').textContent = Utils.formatCurrency(data.monto_total_pagos);
+    document.getElementById('pagos-mes').textContent = Utils.formatNumber(data.pagos_mes_actual);
+    document.getElementById('clientes-morosos').textContent = Utils.formatNumber(data.clientes_morosos);
+
+    // Estadísticas del resumen del sistema
+    document.getElementById('total-pagos-dashboard').textContent = Utils.formatNumber(data.total_pagos);
+    document.getElementById('monto-total-dashboard').textContent = Utils.formatCurrency(data.monto_total_pagos);
+    document.getElementById('prestamos-activos-dashboard').textContent = Utils.formatNumber(data.prestamos_activos);
+    document.getElementById('clientes-morosos-dashboard').textContent = Utils.formatNumber(data.clientes_morosos);
+}
+
+// Función para inicializar todas las gráficas
+async function inicializarGraficas() {
+    try {
+        // Cargar datos para cada gráfica
+        const [datosPrestamos, datosMetodos, datosEvolucion, datosTipos] = await Promise.all([
+            Utils.ajax('/api/reportes/charts/prestamos-estado'),
+            Utils.ajax('/api/reportes/charts/pagos-metodo'),
+            Utils.ajax('/api/reportes/charts/evolucion-pagos'),
+            Utils.ajax('/api/reportes/charts/tipos-pago')
+        ]);
+
+        // Crear gráficas
+        crearGraficaPrestamos(datosPrestamos);
+        crearGraficaMetodosPago(datosMetodos);
+        crearGraficaEvolucionPagos(datosEvolucion);
+        crearGraficaTiposPago(datosTipos);
+
+    } catch (error) {
+        console.error('Error inicializando gráficas:', error);
+        Utils.showError('Error al cargar las gráficas');
+    }
+}
+
+// Crear gráfica de distribución de préstamos
+function crearGraficaPrestamos(data) {
+    const ctx = document.getElementById('chartPrestamos').getContext('2d');
+    chartPrestamos = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.data,
+                backgroundColor: data.colors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return `${context.label}: ${context.parsed} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Crear gráfica de métodos de pago
+function crearGraficaMetodosPago(data) {
+    const ctx = document.getElementById('chartMetodosPago').getContext('2d');
+    chartMetodosPago = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.data,
+                backgroundColor: data.colors,
+                borderWidth: 1,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return Utils.formatCurrency(value);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return Utils.formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Crear gráfica de evolución de pagos
+function crearGraficaEvolucionPagos(data) {
+    const ctx = document.getElementById('chartEvolucionPagos').getContext('2d');
+    chartEvolucionPagos = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                label: 'Monto de Pagos',
+                data: data.data,
+                borderColor: '#007bff',
+                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointBackgroundColor: '#007bff',
+                pointBorderColor: '#fff',
+                pointBorderWidth: 2,
+                pointRadius: 6,
+                pointHoverRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return Utils.formatCurrency(value);
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return Utils.formatCurrency(context.parsed.y);
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Crear gráfica de tipos de pago
+function crearGraficaTiposPago(data) {
+    const ctx = document.getElementById('chartTiposPago').getContext('2d');
+    chartTiposPago = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: data.labels,
+            datasets: [{
+                data: data.data,
+                backgroundColor: data.colors,
+                borderWidth: 2,
+                borderColor: '#fff'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((context.parsed / total) * 100).toFixed(1);
+                            return `${context.label}: ${Utils.formatCurrency(context.parsed)} (${percentage}%)`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+}
+
+// Función para actualizar todas las gráficas
+async function actualizarGraficas() {
+    try {
+        // Destruir gráficas existentes
+        if (chartPrestamos) chartPrestamos.destroy();
+        if (chartMetodosPago) chartMetodosPago.destroy();
+        if (chartEvolucionPagos) chartEvolucionPagos.destroy();
+        if (chartTiposPago) chartTiposPago.destroy();
+
+        // Volver a inicializar
+        await inicializarGraficas();
+
+        Utils.showSuccess('Gráficas actualizadas correctamente');
+
+    } catch (error) {
+        console.error('Error actualizando gráficas:', error);
+        Utils.showError('Error al actualizar las gráficas');
+    }
+}
+
+// Inicializar todo al cargar la página
+document.addEventListener('DOMContentLoaded', async function() {
+    await cargarEstadisticas();
+    await inicializarGraficas();
+});
+</script>
+{% endblock %}
