@@ -1,0 +1,363 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h1 class="display-4 text-center">
+                <i class="fas fa-sync-alt"></i> Refinanciar Crédito
+            </h1>
+            <p class="text-center text-muted">Reestructurar el crédito para mejorar las condiciones de pago</p>
+        </div>
+    </div>
+
+    <!-- Información del Crédito Actual -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-info-circle"></i> Información del Crédito Actual
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-5">Cliente:</dt>
+                                <dd class="col-sm-7">{{ prestamo.cliente.nombre_completo }}</dd>
+
+                                <dt class="col-sm-5">Monto Original:</dt>
+                                <dd class="col-sm-7">${{ "{:,.0f}".format(prestamo.monto) }}</dd>
+
+                                <dt class="col-sm-5">Tasa Actual:</dt>
+                                <dd class="col-sm-7">{{ prestamo.tasa_interes }}%</dd>
+
+                                <dt class="col-sm-5">Plazo Original:</dt>
+                                <dd class="col-sm-7">{{ prestamo.plazo_meses }} meses</dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-5">Saldo Pendiente:</dt>
+                                <dd class="col-sm-7">
+                                    <span class="badge bg-warning">${{ "{:,.0f}".format(prestamo.saldo_pendiente) }}</span>
+                                </dd>
+
+                                <dt class="col-sm-5">Cuotas Pagadas:</dt>
+                                <dd class="col-sm-7">{{ prestamo.cuotas_pagadas }} de {{ prestamo.numero_cuotas }}</dd>
+
+                                <dt class="col-sm-5">Valor Cuota:</dt>
+                                <dd class="col-sm-7">${{ "{:,.0f}".format(prestamo.valor_cuota) }}</dd>
+
+                                <dt class="col-sm-5">Estado:</dt>
+                                <dd class="col-sm-7">
+                                    {% if prestamo.estado == 'activo' %}
+                                        <span class="badge bg-success">Activo</span>
+                                    {% elif prestamo.estado == 'mora' %}
+                                        <span class="badge bg-danger">En Mora</span>
+                                    {% elif prestamo.estado == 'pagado' %}
+                                        <span class="badge bg-secondary">Pagado</span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario de Refinanciación -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-edit"></i> Nueva Estructura del Crédito
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <form id="formRefinanciar">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nuevoMonto" class="form-label">
+                                    Nuevo Monto del Crédito *
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="nuevoMonto"
+                                           value="{{ prestamo.saldo_pendiente | round | int }}"
+                                           min="100000" max="50000000" step="10000" required>
+                                </div>
+                                <div class="form-text">Monto que se refinancia (saldo pendiente actual)</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="nuevaTasa" class="form-label">
+                                    Nueva Tasa de Interés (%) *
+                                </label>
+                                <div class="input-group">
+                                    <input type="number" class="form-control" id="nuevaTasa"
+                                           value="{{ prestamo.tasa_interes }}"
+                                           min="0.5" max="5.0" step="0.1" required>
+                                    <span class="input-group-text">%</span>
+                                </div>
+                                <div class="form-text">Tasa mensual de interés</div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="nuevoPlazo" class="form-label">
+                                    Nuevo Plazo (meses) *
+                                </label>
+                                <input type="number" class="form-control" id="nuevoPlazo"
+                                       value="{{ prestamo.numero_cuotas - prestamo.cuotas_pagadas }}"
+                                       min="1" max="120" required>
+                                <div class="form-text">Nuevo plazo en meses</div>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label for="fechaInicio" class="form-label">
+                                    Fecha de Inicio *
+                                </label>
+                                <input type="date" class="form-control" id="fechaInicio"
+                                       value="{{ (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d') }}" required>
+                                <div class="form-text">Fecha de inicio del nuevo crédito</div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="observaciones" class="form-label">
+                                Observaciones de la Refinanciación
+                            </label>
+                            <textarea class="form-control" id="observaciones" rows="3"
+                                      placeholder="Describa el motivo de la refinanciación..."></textarea>
+                        </div>
+
+                        <!-- Vista Previa de la Nueva Estructura -->
+                        <div class="card bg-light mb-4">
+                            <div class="card-header">
+                                <h6 class="mb-0">
+                                    <i class="fas fa-eye"></i> Vista Previa de la Nueva Estructura
+                                </h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <dl class="row">
+                                            <dt class="col-sm-6">Nuevo Monto:</dt>
+                                            <dd class="col-sm-6" id="previewMonto">-</dd>
+
+                                            <dt class="col-sm-6">Nueva Tasa:</dt>
+                                            <dd class="col-sm-6" id="previewTasa">-</dd>
+
+                                            <dt class="col-sm-6">Nuevo Plazo:</dt>
+                                            <dd class="col-sm-6" id="previewPlazo">-</dd>
+                                        </dl>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <dl class="row">
+                                            <dt class="col-sm-6">Nueva Cuota:</dt>
+                                            <dd class="col-sm-6" id="previewCuota">-</dd>
+
+                                            <dt class="col-sm-6">Total Intereses:</dt>
+                                            <dd class="col-sm-6" id="previewIntereses">-</dd>
+
+                                            <dt class="col-sm-6">Total a Pagar:</dt>
+                                            <dd class="col-sm-6" id="previewTotal">-</dd>
+                                        </dl>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/prestamos/{{ prestamo.id }}/detalle" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="button" class="btn btn-info" onclick="actualizarVistaPrevia()">
+                                <i class="fas fa-refresh"></i> Actualizar Vista Previa
+                            </button>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-check"></i> Confirmar Refinanciación
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación -->
+<div class="modal fade" id="modalConfirmar" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-check-circle"></i> Confirmar Refinanciación
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <h6><i class="fas fa-info-circle"></i> Resumen de la Refinanciación</h6>
+                    <p>Se creará un nuevo crédito con las siguientes condiciones:</p>
+                    <ul id="resumenRefinanciacion">
+                        <!-- Se llenará dinámicamente -->
+                    </ul>
+                </div>
+                <div class="alert alert-warning">
+                    <strong>Nota:</strong> Esta acción creará un nuevo crédito y marcará el actual como refinanciado. ¿Desea continuar?
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="confirmarRefinanciacion()">
+                    <i class="fas fa-check"></i> Confirmar Refinanciación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Datos del préstamo actual
+const prestamoActual = {
+    id: {{ prestamo.id }},
+    saldoPendiente: {{ prestamo.saldo_pendiente }},
+    tasaActual: {{ prestamo.tasa_interes }},
+    plazoRestante: {{ prestamo.numero_cuotas - prestamo.cuotas_pagadas }}
+};
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Actualizar vista previa inicialmente
+    actualizarVistaPrevia();
+
+    // Escuchar cambios en los campos
+    ['nuevoMonto', 'nuevaTasa', 'nuevoPlazo'].forEach(id => {
+        document.getElementById(id).addEventListener('input', actualizarVistaPrevia);
+    });
+});
+
+function calcularNuevaCuota(monto, tasa, plazo) {
+    const tasaDecimal = tasa / 100;
+    const cuota = monto * (tasaDecimal * Math.pow(1 + tasaDecimal, plazo)) / (Math.pow(1 + tasaDecimal, plazo) - 1);
+    return cuota;
+}
+
+function actualizarVistaPrevia() {
+    const nuevoMonto = parseFloat(document.getElementById('nuevoMonto').value) || 0;
+    const nuevaTasa = parseFloat(document.getElementById('nuevaTasa').value) || 0;
+    const nuevoPlazo = parseInt(document.getElementById('nuevoPlazo').value) || 1;
+
+    if (nuevoMonto > 0 && nuevaTasa > 0 && nuevoPlazo > 0) {
+        const nuevaCuota = calcularNuevaCuota(nuevoMonto, nuevaTasa, nuevoPlazo);
+        const totalIntereses = (nuevaCuota * nuevoPlazo) - nuevoMonto;
+        const totalPagar = nuevaCuota * nuevoPlazo;
+
+        document.getElementById('previewMonto').textContent = `$${nuevoMonto.toLocaleString()}`;
+        document.getElementById('previewTasa').textContent = `${nuevaTasa}%`;
+        document.getElementById('previewPlazo').textContent = `${nuevoPlazo} meses`;
+        document.getElementById('previewCuota').textContent = `$${Math.round(nuevaCuota).toLocaleString()}`;
+        document.getElementById('previewIntereses').textContent = `$${Math.round(totalIntereses).toLocaleString()}`;
+        document.getElementById('previewTotal').textContent = `$${Math.round(totalPagar).toLocaleString()}`;
+    }
+}
+
+document.getElementById('formRefinanciar').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const datosRefinanciacion = {
+        nuevo_monto: parseFloat(document.getElementById('nuevoMonto').value),
+        nueva_tasa: parseFloat(document.getElementById('nuevaTasa').value),
+        nuevo_plazo: parseInt(document.getElementById('nuevoPlazo').value),
+        fecha_inicio: document.getElementById('fechaInicio').value,
+        observaciones: document.getElementById('observaciones').value
+    };
+
+    // Validar datos
+    if (!validarDatosRefinanciacion(datosRefinanciacion)) {
+        return;
+    }
+
+    // Mostrar modal de confirmación
+    mostrarConfirmacion(datosRefinanciacion);
+});
+
+function validarDatosRefinanciacion(datos) {
+    if (datos.nuevo_monto < 100000) {
+        Utils.showError('El monto mínimo debe ser de $100,000');
+        return false;
+    }
+
+    if (datos.nueva_tasa < 0.5 || datos.nueva_tasa > 5.0) {
+        Utils.showError('La tasa debe estar entre 0.5% y 5.0%');
+        return false;
+    }
+
+    if (datos.nuevo_plazo < 1 || datos.nuevo_plazo > 120) {
+        Utils.showError('El plazo debe estar entre 1 y 120 meses');
+        return false;
+    }
+
+    const fechaInicio = new Date(datos.fecha_inicio);
+    const hoy = new Date();
+    if (fechaInicio <= hoy) {
+        Utils.showError('La fecha de inicio debe ser posterior a hoy');
+        return false;
+    }
+
+    return true;
+}
+
+function mostrarConfirmacion(datos) {
+    const nuevaCuota = calcularNuevaCuota(datos.nuevo_monto, datos.nueva_tasa, datos.nuevo_plazo);
+    const totalIntereses = (nuevaCuota * datos.nuevo_plazo) - datos.nuevo_monto;
+    const totalPagar = nuevaCuota * datos.nuevo_plazo;
+
+    const resumenHTML = `
+        <li><strong>Monto refinanciado:</strong> $${datos.nuevo_monto.toLocaleString()}</li>
+        <li><strong>Nueva tasa:</strong> ${datos.nueva_tasa}% mensual</li>
+        <li><strong>Nuevo plazo:</strong> ${datos.nuevo_plazo} meses</li>
+        <li><strong>Nueva cuota mensual:</strong> $${Math.round(nuevaCuota).toLocaleString()}</li>
+        <li><strong>Total intereses:</strong> $${Math.round(totalIntereses).toLocaleString()}</li>
+        <li><strong>Total a pagar:</strong> $${Math.round(totalPagar).toLocaleString()}</li>
+        <li><strong>Fecha de inicio:</strong> ${new Date(datos.fecha_inicio).toLocaleDateString('es-CO')}</li>
+    `;
+
+    document.getElementById('resumenRefinanciacion').innerHTML = resumenHTML;
+
+    // Guardar datos para la confirmación
+    window.datosRefinanciacion = datos;
+
+    new bootstrap.Modal(document.getElementById('modalConfirmar')).show();
+}
+
+async function confirmarRefinanciacion() {
+    try {
+        const response = await Utils.ajax(`/api/prestamos/${prestamoActual.id}/refinanciar`, {
+            method: 'POST',
+            body: JSON.stringify(window.datosRefinanciacion)
+        });
+
+        Utils.showSuccess('Refinanciación realizada exitosamente');
+
+        // Cerrar modal y redirigir
+        bootstrap.Modal.getInstance(document.getElementById('modalConfirmar')).hide();
+
+        setTimeout(() => {
+            window.location.href = `/prestamos/${response.nuevo_prestamo_id}/detalle`;
+        }, 2000);
+
+    } catch (error) {
+        console.error('Error en refinanciación:', error);
+        Utils.showError('Error al realizar la refinanciación: ' + error.message);
+    }
+}
+</script>
+{% endblock %}

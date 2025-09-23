@@ -15,6 +15,12 @@
                     <i class="fas fa-arrow-left"></i>
                     Volver
                 </a>
+                {% if prestamo.estado == 'activo' or prestamo.estado == 'mora' %}
+                <a href="/prestamos/{{ prestamo.id }}/refinanciar" class="btn btn-warning me-2">
+                    <i class="fas fa-sync-alt"></i>
+                    Refinanciar
+                </a>
+                {% endif %}
                 {% if prestamo.estado == 'activo' %}
                 <button class="btn btn-success" onclick="registrarPago()">
                     <i class="fas fa-cash-register"></i>

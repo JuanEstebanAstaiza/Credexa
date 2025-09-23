@@ -196,6 +196,42 @@ async def prestamos_detalle(
         "prestamo": prestamo
     })
 
+@app.get("/prestamos/{prestamo_id}/refinanciar", response_class=HTMLResponse)
+async def refinanciar_prestamo(
+    prestamo_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Página de refinanciación de préstamo"""
+    from app.models.prestamo import Prestamo
+    prestamo = db.query(Prestamo).filter(Prestamo.id == prestamo_id).first()
+    if not prestamo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Préstamo no encontrado",
+        )
+
+    # Verificar que el préstamo pueda ser refinanciado
+    if prestamo.estado == "pagado":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se puede refinanciar un préstamo pagado"
+        )
+
+    if prestamo.saldo_pendiente <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El préstamo no tiene saldo pendiente"
+        )
+
+    return templates.TemplateResponse("prestamos/refinanciar.html", {
+        "request": request,
+        "title": f"Refinanciar Crédito #{prestamo.id}",
+        "user": current_user,
+        "prestamo": prestamo
+    })
+
 @app.get("/pagos")
 async def pagos_redirect(request: Request, current_user = Depends(get_current_user_optional)):
     """Redireccionar a lista de pagos"""

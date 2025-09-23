@@ -260,44 +260,82 @@ async def obtener_estadisticas_prestamos(
         promedio_tasa_interes=float(stats.promedio_tasa_interes or 0)
     )
 
-@router.post("/refinanciar", response_model=PrestamoSchema)
+@router.post("/prestamos/{prestamo_id}/refinanciar")
 async def refinanciar_prestamo(
-    refinanciacion_data: RefinanciacionCreate,
+    prestamo_id: int,
+    refinanciacion_data: dict,
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
-    """Crear una refinanciación de préstamo"""
+    """Crear una refinanciación de préstamo específico"""
     # Obtener préstamo original
-    prestamo_original = db.query(Prestamo).filter(
-        Prestamo.id == refinanciacion_data.prestamo_original_id
-    ).first()
+    prestamo_original = db.query(Prestamo).filter(Prestamo.id == prestamo_id).first()
 
     if not prestamo_original:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Préstamo original no encontrado",
+            detail="Préstamo no encontrado",
         )
 
-    if prestamo_original.estado != "activo":
+    if prestamo_original.estado not in ["activo", "mora"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Solo se pueden refinanciar préstamos activos",
+            detail="Solo se pueden refinanciar préstamos activos o en mora",
+        )
+
+    if prestamo_original.saldo_pendiente <= 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El préstamo no tiene saldo pendiente para refinanciar",
+        )
+
+    # Validar datos de entrada
+    nuevo_monto = refinanciacion_data.get("nuevo_monto", prestamo_original.saldo_pendiente)
+    nueva_tasa = refinanciacion_data.get("nueva_tasa", prestamo_original.tasa_interes)
+    nuevo_plazo = refinanciacion_data.get("nuevo_plazo", prestamo_original.numero_cuotas - prestamo_original.cuotas_pagadas)
+    fecha_inicio_str = refinanciacion_data.get("fecha_inicio")
+    observaciones = refinanciacion_data.get("observaciones", "Refinanciación del crédito")
+
+    # Convertir fecha
+    try:
+        fecha_inicio = datetime.fromisoformat(fecha_inicio_str) if fecha_inicio_str else datetime.now()
+    except:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Formato de fecha inválido",
+        )
+
+    # Validar rangos
+    if nuevo_monto < 100000 or nuevo_monto > 50000000:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El monto debe estar entre $100,000 y $50,000,000",
+        )
+
+    if nueva_tasa < 0.5 or nueva_tasa > 5.0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="La tasa debe estar entre 0.5% y 5.0%",
+        )
+
+    if nuevo_plazo < 1 or nuevo_plazo > 120:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="El plazo debe estar entre 1 y 120 meses",
         )
 
     # Cambiar estado del préstamo original
     prestamo_original.estado = "refinanciado"
-    prestamo_original.saldo_pendiente = 0  # Saldar el préstamo original
+    prestamo_original.saldo_pendiente = Decimal('0')
 
     # Crear nuevo préstamo de refinanciación
     nuevo_prestamo = Prestamo(
         cliente_id=prestamo_original.cliente_id,
-        monto=refinanciacion_data.nuevo_monto,
-        tasa_interes=refinanciacion_data.nueva_tasa_interes,
-        plazo_meses=refinanciacion_data.nuevo_plazo_meses,
-        fecha_inicio=datetime.now(),
-        prestamo_padre_id=prestamo_original.id,
-        es_refinanciacion=1,
-        observaciones=refinanciacion_data.observaciones or f"Refinanciación del préstamo #{prestamo_original.id}"
+        monto=nuevo_monto,
+        tasa_interes=nueva_tasa,
+        plazo_meses=nuevo_plazo,
+        fecha_inicio=fecha_inicio,
+        observaciones=f"{observaciones} - Refinanciación de crédito #{prestamo_original.id}"
     )
 
     # Calcular valores automáticos
@@ -315,7 +353,13 @@ async def refinanciar_prestamo(
     db.commit()
     db.refresh(nuevo_prestamo)
 
-    return PrestamoSchema.from_orm_with_calculations(nuevo_prestamo)
+    return {
+        "message": "Refinanciación creada exitosamente",
+        "nuevo_prestamo_id": nuevo_prestamo.id,
+        "prestamo_original_id": prestamo_original.id,
+        "monto_refinanciado": nuevo_monto,
+        "nueva_cuota": float(nuevo_prestamo.valor_cuota)
+    }
 
 # Endpoints para páginas HTML
 

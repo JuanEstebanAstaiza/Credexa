@@ -167,19 +167,30 @@ document.addEventListener('DOMContentLoaded', function() {
     // Función para cargar estadísticas
     async function cargarEstadisticas() {
         try {
-            // Aquí se harían llamadas a la API para obtener estadísticas reales
-            // Por ahora, mostramos datos de ejemplo
+            // Cargar estadísticas de préstamos
+            const statsPrestamos = await Utils.ajax('/api/prestamos/estadisticas/general');
 
-            // Simular carga de datos
-            setTimeout(() => {
-                document.getElementById('total-prestamos').textContent = '24';
-                document.getElementById('prestamos-activos').textContent = '18';
-                document.getElementById('prestamos-mora').textContent = '3';
-                document.getElementById('pagos-mes').textContent = '$12,450';
-            }, 1000);
+            document.getElementById('total-prestamos').textContent = statsPrestamos.total_prestamos;
+            document.getElementById('prestamos-activos').textContent = statsPrestamos.prestamos_activos;
+            document.getElementById('prestamos-mora').textContent = statsPrestamos.prestamos_en_mora;
+
+            // Cargar estadísticas de pagos del mes
+            const statsPagos = await Utils.ajax('/api/reportes/estadisticas');
+            const pagosMes = new Intl.NumberFormat('es-CO', {
+                style: 'currency',
+                currency: 'COP',
+                minimumFractionDigits: 0
+            }).format(statsPagos.monto_mes_actual || 0);
+
+            document.getElementById('pagos-mes').textContent = pagosMes;
 
         } catch (error) {
             console.error('Error cargando estadísticas:', error);
+            // Mostrar valores por defecto en caso de error
+            document.getElementById('total-prestamos').textContent = '0';
+            document.getElementById('prestamos-activos').textContent = '0';
+            document.getElementById('prestamos-mora').textContent = '0';
+            document.getElementById('pagos-mes').textContent = '$0';
         }
     }
 
