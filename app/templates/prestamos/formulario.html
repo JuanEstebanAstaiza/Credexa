@@ -43,6 +43,41 @@
                                 {% endfor %}
                             </select>
                         </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="origen" class="form-label">
+                                <i class="fas fa-building"></i> Origen del Préstamo *
+                            </label>
+                            <select class="form-select" id="origen" name="origen" required>
+                                <option value="empresa" {{ 'selected' if prestamo and prestamo.origen == 'empresa' else 'selected' }}>
+                                    Empresa
+                                </option>
+                                <option value="socio" {{ 'selected' if prestamo and prestamo.origen == 'socio' else '' }}>
+                                    Socio
+                                </option>
+                            </select>
+                            <div class="form-text">¿Quién proporciona el capital del préstamo?</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3" id="socio-container" style="display: none;">
+                            <label for="socio_id" class="form-label">
+                                <i class="fas fa-user-tie"></i> Socio Prestamista *
+                            </label>
+                            <select class="form-select" id="socio_id" name="socio_id">
+                                <option value="">Seleccionar socio...</option>
+                                {% for socio in socios %}
+                                <option value="{{ socio.id }}"
+                                        data-capital="{{ socio.capital_actual }}"
+                                        {{ 'selected' if prestamo and prestamo.socio_id == socio.id else '' }}>
+                                    {{ socio.nombre_completo }} - {{ socio.cedula }}
+                                    (Capital: {{ socio.capital_actual|number_format(0, ',', '.') }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <div class="form-text" id="socio-info">Seleccione un socio con capital disponible</div>
+                        </div>
 
                         <div class="col-md-6 mb-3">
                             <label for="monto" class="form-label">
@@ -342,6 +377,66 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!fechaInicioInput.value) {
         fechaInicioInput.value = today;
     }
+
+    // Manejo del origen del préstamo
+    const origenSelect = document.getElementById('origen');
+    const socioContainer = document.getElementById('socio-container');
+    const socioSelect = document.getElementById('socio_id');
+    const socioInfo = document.getElementById('socio-info');
+    const montoPrestamoInput = document.getElementById('monto');
+
+    // Función para mostrar/ocultar selector de socio
+    function toggleSocioSelector() {
+        if (origenSelect.value === 'socio') {
+            socioContainer.style.display = 'block';
+            socioSelect.required = true;
+        } else {
+            socioContainer.style.display = 'none';
+            socioSelect.required = false;
+            socioSelect.value = '';
+            actualizarInfoSocio();
+        }
+    }
+
+    // Función para actualizar información del socio seleccionado
+    function actualizarInfoSocio() {
+        const selectedOption = socioSelect.options[socioSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const capital = parseFloat(selectedOption.getAttribute('data-capital')) || 0;
+            socioInfo.innerHTML = `Capital disponible: ${Utils.formatCurrency(capital)}`;
+            validarMontoVsCapital();
+        } else {
+            socioInfo.innerHTML = 'Seleccione un socio con capital disponible';
+        }
+    }
+
+    // Función para validar que el monto no exceda el capital del socio
+    function validarMontoVsCapital() {
+        const selectedOption = socioSelect.options[socioSelect.selectedIndex];
+        const monto = parseFloat(montoPrestamoInput.value.replace(/\D/g, '')) || 0;
+
+        if (selectedOption && selectedOption.value && monto > 0) {
+            const capital = parseFloat(selectedOption.getAttribute('data-capital')) || 0;
+            if (monto > capital) {
+                Utils.showError(`El monto solicitado (${Utils.formatCurrency(monto)}) excede el capital disponible del socio (${Utils.formatCurrency(capital)})`);
+                montoPrestamoInput.setCustomValidity('Monto excede capital disponible');
+                return false;
+            } else {
+                montoPrestamoInput.setCustomValidity('');
+                return true;
+            }
+        }
+        return true;
+    }
+
+    // Event listeners para origen y socio
+    origenSelect.addEventListener('change', toggleSocioSelector);
+    socioSelect.addEventListener('change', actualizarInfoSocio);
+    montoPrestamoInput.addEventListener('input', validarMontoVsCapital);
+
+    // Inicializar estado
+    toggleSocioSelector();
+    actualizarInfoSocio();
 });
 </script>
 {% endblock %}

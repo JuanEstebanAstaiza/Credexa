@@ -95,8 +95,9 @@ class Prestamo(Base):
         if self.plazo_meses == 0:
             return float(self.monto)
 
-        r = self.tasa_interes / 100  # Convertir porcentaje a decimal
-        n = self.plazo_meses
+        # Convertir todo a float para evitar problemas con Decimal
+        r = float(self.tasa_interes) / 100  # Convertir porcentaje a decimal
+        n = float(self.plazo_meses)
 
         if r == 0:
             # Si no hay interés, dividir el monto por el número de cuotas

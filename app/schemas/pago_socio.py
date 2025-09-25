@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field, validator
 class PagoSocioBase(BaseModel):
     """Schema base para PagoSocio"""
     socio_id: int
-    tipo: str = Field(..., pattern="^(aporte|prestamo|devolucion|ganancia)$")
+    tipo: str = Field(..., pattern="^(aporte|prestamo|devolucion|ganancia|retiro)$")
     monto: Decimal = Field(..., gt=0)
     fecha_pago: datetime
     metodo_pago: Optional[str] = Field(None, max_length=50)
@@ -25,7 +25,7 @@ class PagoSocioBase(BaseModel):
 class PagoSocioCreate(BaseModel):
     """Schema para crear PagoSocio"""
     socio_id: int
-    tipo: str = Field(..., pattern="^(aporte|prestamo|devolucion|ganancia)$")
+    tipo: str = Field(..., pattern="^(aporte|prestamo|devolucion|ganancia|retiro)$")
     monto: Decimal = Field(..., gt=0)
     fecha_pago: datetime
     metodo_pago: Optional[str] = Field(None, max_length=50)
@@ -45,7 +45,7 @@ class PagoSocioCreate(BaseModel):
 
 class PagoSocioUpdate(BaseModel):
     """Schema para actualizar PagoSocio"""
-    tipo: Optional[str] = Field(None, pattern="^(aporte|prestamo|devolucion|ganancia)$")
+    tipo: Optional[str] = Field(None, pattern="^(aporte|prestamo|devolucion|ganancia|retiro)$")
     monto: Optional[Decimal] = Field(None, gt=0)
     fecha_pago: Optional[datetime] = None
     metodo_pago: Optional[str] = Field(None, max_length=50)

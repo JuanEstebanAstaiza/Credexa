@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Retiros de Socios{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="fas fa-hand-holding-usd"></i>
+                    Gestión de Retiros de Socios
+                </h1>
+                <p class="text-muted mb-0">Administra retiros de ganancias para socios</p>
+            </div>
+            <a href="/socios" class="btn btn-secondary">
+                <i class="fas fa-arrow-left"></i>
+                Volver a Socios
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Selector de Socio -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-tie"></i>
+                    Seleccionar Socio
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="socio-selector" class="form-label">
+                            Socio <span class="text-danger">*</span>
+                        </label>
+                        <select class="form-select" id="socio-selector" onchange="cambiarSocio()">
+                            {% for socio_item in socios %}
+                            <option value="{{ socio_item.id }}" {{ 'selected' if socio_item.id == socio.id else '' }}>
+                                {{ socio_item.nombre_completo }} - CC: {{ socio_item.cedula }}
+                                (Capital: ${{ socio_item.capital_actual|number_format(0, ',', '.') }})
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información del Socio -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user"></i>
+                    Información del Socio
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Nombre:</strong> <span id="socio-nombre">{{ socio.nombre_completo }}</span></p>
+                        <p><strong>Cédula:</strong> <span id="socio-cedula">{{ socio.cedula }}</span></p>
+                        <p><strong>Teléfono:</strong> <span id="socio-telefono">{{ socio.telefono or 'No registrado' }}</span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Email:</strong> <span id="socio-email">{{ socio.email or 'No registrado' }}</span></p>
+                        <p><strong>Fecha de Nacimiento:</strong> <span id="socio-fecha">{{ socio.fecha_nacimiento.strftime('%d/%m/%Y') if socio.fecha_nacimiento else 'No registrada' }}</span></p>
+                        <p><strong>Ocupación:</strong> <span id="socio-ocupacion">{{ socio.ocupacion or 'No registrada' }}</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-primary text-white">
+            <div class="card-body text-center">
+                <i class="fas fa-wallet fa-3x mb-3 opacity-75"></i>
+                <h4>Capital Actual</h4>
+                <h2 id="capital-actual">${{ socio.capital_actual|number_format(0, ',', '.') }}</h2>
+                <p class="mb-0">Disponible para retiro</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Formulario de Solicitud de Retiro -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                    <i class="fas fa-file-signature"></i>
+                    Nueva Solicitud de Retiro
+                </h5>
+            </div>
+            <div class="card-body">
+                <!-- Mensajes -->
+                <div id="error-message" class="alert alert-danger d-none" role="alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="error-text"></span>
+                </div>
+
+                <div id="success-message" class="alert alert-success d-none" role="alert">
+                    <i class="fas fa-check-circle"></i>
+                    <span id="success-text"></span>
+                </div>
+
+                <form id="retiro-form">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="monto_retiro" class="form-label">
+                                <i class="fas fa-money-bill-wave"></i> Monto a Retirar *
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input
+                                    type="number"
+                                    class="form-control"
+                                    id="monto_retiro"
+                                    name="monto"
+                                    required
+                                    min="10000"
+                                    step="1000"
+                                    placeholder="50000"
+                                >
+                            </div>
+                            <div class="form-text">Mínimo $10.000 - Máximo disponible</div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="metodo_pago" class="form-label">
+                                <i class="fas fa-credit-card"></i> Método de Pago Preferido *
+                            </label>
+                            <select class="form-select" id="metodo_pago" name="metodo_pago" required>
+                                <option value="">Seleccionar método...</option>
+                                <option value="transferencia">Transferencia Bancaria</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="cheque">Cheque</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="descripcion" class="form-label">
+                            <i class="fas fa-sticky-note"></i> Descripción
+                        </label>
+                        <textarea
+                            class="form-control"
+                            id="descripcion"
+                            name="descripcion"
+                            rows="3"
+                            maxlength="200"
+                            placeholder="Motivo del retiro (opcional)..."
+                        ></textarea>
+                        <div class="form-text">Máximo 200 caracteres</div>
+                    </div>
+
+                    <!-- Información adicional -->
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Información Importante</h6>
+                        <ul class="mb-0">
+                            <li>Los retiros están sujetos a aprobación administrativa</li>
+                            <li>El tiempo de procesamiento puede tomar hasta 3 días hábiles</li>
+                            <li>Se notificará por email cuando se apruebe el retiro</li>
+                            <li>Los retiros solo pueden hacerse desde ganancias, no desde capital inicial</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div id="resumen-retiro" class="text-muted">
+                            <!-- Aquí se mostrará el resumen -->
+                        </div>
+                        <button type="submit" class="btn btn-success btn-lg" id="submit-btn">
+                            <i class="fas fa-paper-plane"></i>
+                            Enviar Solicitud
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Historial de Solicitudes -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history"></i>
+                    Historial de Solicitudes
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="historial-solicitudes">
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary spinner-border-sm" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <small class="text-muted ms-2">Cargando historial...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Definir información del usuario para JavaScript
+const user = {
+    is_admin: {{ user.is_admin|lower }}
+};
+
+// Lista de socios para JavaScript
+const sociosData = [
+    {% for socio_item in socios %}
+    {
+        id: {{ socio_item.id }},
+        nombre_completo: "{{ socio_item.nombre_completo }}",
+        cedula: "{{ socio_item.cedula }}",
+        telefono: "{{ socio_item.telefono or '' }}",
+        email: "{{ socio_item.email or '' }}",
+        fecha_nacimiento: "{{ socio_item.fecha_nacimiento.strftime('%d/%m/%Y') if socio_item.fecha_nacimiento else '' }}",
+        ocupacion: "{{ socio_item.ocupacion or '' }}",
+        capital_actual: {{ socio_item.capital_actual }}
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+];
+
+let currentSocioId = {{ socio.id }};
+let capitalActual = {{ socio.capital_actual }};
+
+function cambiarSocio() {
+    const selector = document.getElementById('socio-selector');
+    const socioId = parseInt(selector.value);
+
+    // Encontrar el socio seleccionado
+    const socioSeleccionado = sociosData.find(s => s.id === socioId);
+    if (!socioSeleccionado) return;
+
+    // Actualizar variables globales
+    currentSocioId = socioId;
+    capitalActual = socioSeleccionado.capital_actual;
+
+    // Actualizar información en la interfaz
+    document.getElementById('socio-nombre').textContent = socioSeleccionado.nombre_completo;
+    document.getElementById('socio-cedula').textContent = socioSeleccionado.cedula;
+    document.getElementById('socio-telefono').textContent = socioSeleccionado.telefono || 'No registrado';
+    document.getElementById('socio-email').textContent = socioSeleccionado.email || 'No registrado';
+    document.getElementById('socio-fecha').textContent = socioSeleccionado.fecha_nacimiento || 'No registrada';
+    document.getElementById('socio-ocupacion').textContent = socioSeleccionado.ocupacion || 'No registrada';
+    document.getElementById('capital-actual').textContent = Utils.formatCurrency(capitalActual);
+
+    // Limpiar formulario
+    document.getElementById('retiro-form').reset();
+
+    // Recargar historial
+    cargarHistorialSolicitudes();
+}
+
+async function cargarHistorialSolicitudes() {
+    try {
+        const response = await Utils.ajax(`/api/socios/${currentSocioId}/pagos?tipo=retiro&limit=20`);
+        mostrarHistorialSolicitudes(response.items || []);
+
+    } catch (error) {
+        console.error('Error cargando historial:', error);
+        document.getElementById('historial-solicitudes').innerHTML =
+            '<div class="text-center text-muted py-3"><small>Error al cargar historial</small></div>';
+    }
+}
+
+function mostrarHistorialSolicitudes(solicitudes) {
+    const container = document.getElementById('historial-solicitudes');
+
+    if (!solicitudes || solicitudes.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-3"><small>No has realizado solicitudes de retiro</small></div>';
+        return;
+    }
+
+    let html = '<div class="table-responsive"><table class="table table-striped table-hover">';
+    html += `
+        <thead class="table-dark">
+            <tr>
+                <th>Fecha</th>
+                <th>Monto</th>
+                <th>Método</th>
+                <th>Estado</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+    `;
+
+    solicitudes.forEach(solicitud => {
+        const fecha = new Date(solicitud.fecha_pago).toLocaleDateString('es-CO');
+        const estadoBadge = getEstadoBadge(solicitud.estado || 'pendiente');
+
+        html += `
+            <tr>
+                <td>${fecha}</td>
+                <td class="text-primary">${Utils.formatCurrency(solicitud.monto)}</td>
+                <td>${solicitud.metodo_pago || 'No especificado'}</td>
+                <td>${estadoBadge}</td>
+                <td>${solicitud.descripcion || '-'}</td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table></div>';
+    container.innerHTML = html;
+}
+
+function getEstadoBadge(estado) {
+    const badges = {
+        'aprobado': '<span class="badge bg-success">Aprobado</span>',
+        'pendiente': '<span class="badge bg-warning text-dark">Pendiente</span>',
+        'rechazado': '<span class="badge bg-danger">Rechazado</span>',
+        'procesado': '<span class="badge bg-info">Procesado</span>'
+    };
+    return badges[estado] || '<span class="badge bg-secondary">Otro</span>';
+}
+
+// Manejo del formulario
+document.getElementById('retiro-form').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    if (!Utils.validateForm(this)) {
+        Utils.showError('Por favor, corrige los errores en el formulario');
+        return;
+    }
+
+    // Recopilar datos
+    const formData = new FormData(this);
+    const monto = parseFloat(formData.get('monto'));
+
+    // Validar que no exceda el capital disponible
+    if (monto > capitalActual) {
+        Utils.showError(`El monto solicitado (${Utils.formatCurrency(monto)}) excede tu capital disponible (${Utils.formatCurrency(capitalActual)})`);
+        return;
+    }
+
+    // Validar monto mínimo
+    if (monto < 10000) {
+        Utils.showError('El monto mínimo de retiro es $10.000');
+        return;
+    }
+
+    const solicitudData = {
+        socio_id: currentSocioId,
+        tipo: 'retiro',
+        monto: monto,
+        fecha_pago: new Date().toISOString(),
+        metodo_pago: formData.get('metodo_pago'),
+        descripcion: formData.get('descripcion') || 'Retiro de ganancias registrado por administrador'
+    };
+
+    try {
+        const submitBtn = document.getElementById('submit-btn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+        // Ocultar mensajes anteriores
+        document.getElementById('error-message').classList.add('d-none');
+        document.getElementById('success-message').classList.add('d-none');
+
+        // Enviar solicitud
+        const response = await Utils.ajax(`/api/socios/${currentSocioId}/pagos`, {
+            method: 'POST',
+            body: JSON.stringify(solicitudData)
+        });
+
+        document.getElementById('success-text').textContent = 'Solicitud de retiro enviada exitosamente. Recibirás una notificación cuando sea procesada.';
+        document.getElementById('success-message').classList.remove('d-none');
+
+        // Limpiar formulario
+        this.reset();
+
+        // Recargar información
+        await cargarInformacionSocio();
+
+    } catch (error) {
+        console.error('Error enviando solicitud:', error);
+        let errorMsg = 'Error al enviar la solicitud';
+
+        if (error.detail) {
+            errorMsg = error.detail;
+        } else if (error.message) {
+            errorMsg = error.message;
+        }
+
+        document.getElementById('error-text').textContent = errorMsg;
+        document.getElementById('error-message').classList.remove('d-none');
+
+    } finally {
+        const submitBtn = document.getElementById('submit-btn');
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Solicitud';
+    }
+});
+
+// Actualizar resumen en tiempo real
+document.getElementById('monto_retiro').addEventListener('input', function() {
+    const monto = parseFloat(this.value) || 0;
+    const resumenDiv = document.getElementById('resumen-retiro');
+
+    if (monto > 0) {
+        let resumen = `Retirarás: ${Utils.formatCurrency(monto)}`;
+
+        if (monto > capitalActual) {
+            resumen += ' <span class="text-danger">(Excede capital disponible)</span>';
+        } else {
+            resumen += ` <span class="text-success">(Capital restante: ${Utils.formatCurrency(capitalActual - monto)})</span>`;
+        }
+
+        resumenDiv.innerHTML = resumen;
+    } else {
+        resumenDiv.innerHTML = '';
+    }
+});
+
+// Validación de monto máximo
+document.getElementById('monto_retiro').addEventListener('change', function() {
+    const monto = parseFloat(this.value) || 0;
+
+    if (monto > capitalActual) {
+        this.setCustomValidity(`El monto no puede exceder ${Utils.formatCurrency(capitalActual)}`);
+    } else {
+        this.setCustomValidity('');
+    }
+});
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    cargarHistorialSolicitudes();
+});
+</script>
+{% endblock %}

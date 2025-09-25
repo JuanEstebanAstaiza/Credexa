@@ -160,15 +160,24 @@ async def prestamos_nuevo(
 ):
     """Página de creación de préstamo"""
     from app.models.cliente import Cliente
+    from app.models.socio import Socio
+
     # Obtener lista de clientes activos para el select
     clientes = db.query(Cliente).filter(Cliente.activo == 1).order_by(Cliente.nombre_completo).all()
+
+    # Obtener lista de socios activos con capital disponible
+    socios = db.query(Socio).filter(
+        Socio.activo == True,
+        Socio.capital_actual > 0
+    ).order_by(Socio.nombre_completo).all()
 
     return templates.TemplateResponse("prestamos/formulario.html", {
         "request": request,
         "title": "Nuevo Préstamo",
         "user": current_user,
         "modo": "crear",
-        "clientes": clientes
+        "clientes": clientes,
+        "socios": socios
     })
 
 @app.get("/prestamos/{prestamo_id}/detalle", response_class=HTMLResponse)
@@ -454,6 +463,44 @@ async def socios_pagos(
         "request": request,
         "title": "Pagos de Socios",
         "user": current_user
+    })
+
+@app.get("/socios/deudas", response_class=HTMLResponse)
+async def socios_deudas(
+    request: Request,
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Página de deudas de la empresa con socios"""
+    return templates.TemplateResponse("socios/deudas.html", {
+        "request": request,
+        "title": "Deudas con Socios",
+        "user": current_user
+    })
+
+@app.get("/socios/retiro", response_class=HTMLResponse)
+async def socios_retiro(
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Página de gestión de retiros de socios (solo administradores)"""
+    from app.models.socio import Socio
+
+    # Obtener todos los socios activos para selección
+    socios = db.query(Socio).filter(Socio.activo == True).order_by(Socio.nombre_completo).all()
+
+    if not socios:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No hay socios registrados"
+        )
+
+    return templates.TemplateResponse("socios/retiro.html", {
+        "request": request,
+        "title": "Gestión de Retiros de Socios",
+        "user": current_user,
+        "socios": socios,
+        "socio": socios[0] if socios else None  # Socio por defecto para compatibilidad
     })
 
 # Ruta de Perfil de Usuario

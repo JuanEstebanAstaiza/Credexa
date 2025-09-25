@@ -58,6 +58,28 @@
                             <i class="fas fa-cash-register"></i> Pagos
                         </a>
                     </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="sociosDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-users"></i> Socios
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/socios">
+                                <i class="fas fa-list"></i> Lista de Socios
+                            </a></li>
+                            {% if user.is_admin %}
+                            <li><a class="dropdown-item" href="/socios/crear">
+                                <i class="fas fa-plus"></i> Nuevo Socio
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="/socios/deudas">
+                                <i class="fas fa-hand-holding-usd"></i> Deudas con Socios
+                            </a></li>
+                            <li><a class="dropdown-item" href="/socios/pagos">
+                                <i class="fas fa-money-bill-wave"></i> Gestión de Pagos
+                            </a></li>
+                            {% endif %}
+                        </ul>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link" href="/reportes">
                             <i class="fas fa-chart-bar"></i> Reportes

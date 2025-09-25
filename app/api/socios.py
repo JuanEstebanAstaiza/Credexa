@@ -120,14 +120,16 @@ async def obtener_socio(
         )
 
     # Calcular estadísticas
-    prestamos_activos = db.query(func.count()).select_from(Socio).join(Socio.prestamos).filter(
-        Socio.id == socio_id,
-        Socio.prestamos.any(and_(Socio.prestamos.c.estado == "activo"))
+    from app.models.prestamo import Prestamo
+
+    prestamos_activos = db.query(func.count(Prestamo.id)).filter(
+        Prestamo.socio_id == socio_id,
+        Prestamo.estado == "activo"
     ).scalar() or 0
 
-    prestamos_pagados = db.query(func.count()).select_from(Socio).join(Socio.prestamos).filter(
-        Socio.id == socio_id,
-        Socio.prestamos.any(and_(Socio.prestamos.c.estado == "pagado"))
+    prestamos_pagados = db.query(func.count(Prestamo.id)).filter(
+        Prestamo.socio_id == socio_id,
+        Prestamo.estado == "pagado"
     ).scalar() or 0
 
     # Pagos recientes (últimos 5)
@@ -233,9 +235,9 @@ async def registrar_pago_socio(
     socio_id: int,
     pago: PagoSocioCreate,
     db: Session = Depends(get_db),
-    current_user: UsuarioModel = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
-    """Registrar un pago para un socio (solo administradores)"""
+    """Registrar un pago para un socio (administradores y socios para retiros)"""
     socio = db.query(Socio).filter(Socio.id == socio_id).first()
     if not socio:
         raise HTTPException(
@@ -259,15 +261,23 @@ async def registrar_pago_socio(
                 detail="Ya existe un pago con este número de recibo"
             )
 
+    # Verificar permisos por tipo de pago
+    tipos_admin = ['aporte', 'devolucion', 'ganancia', 'retiro']
+    if pago.tipo in tipos_admin and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Solo administradores pueden registrar pagos de tipo '{pago.tipo}'"
+        )
+
     # Calcular saldos
     saldo_anterior = socio.capital_actual
     if pago.tipo in ['aporte', 'prestamo']:
         saldo_nuevo = saldo_anterior + pago.monto
-    else:  # devolucion, ganancia
+    else:  # devolucion, ganancia, retiro
         saldo_nuevo = saldo_anterior - pago.monto
 
     # Verificar que no se retire más de lo disponible
-    if pago.tipo in ['devolucion', 'ganancia'] and saldo_nuevo < 0:
+    if pago.tipo in ['devolucion', 'ganancia', 'retiro'] and saldo_nuevo < 0:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No hay suficiente capital disponible para esta operación"

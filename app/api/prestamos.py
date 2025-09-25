@@ -17,6 +17,7 @@ from app.models.user import Usuario
 from app.models.cliente import Cliente
 from app.models.prestamo import Prestamo
 from app.models.pago import Pago
+from app.models.socio import Socio
 from app.schemas.prestamo import (
     Prestamo as PrestamoSchema, PrestamoCreate, PrestamoUpdate,
     PrestamoFiltro, PrestamoPaginado, EstadisticasPrestamo,
@@ -48,6 +49,33 @@ async def crear_prestamo(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No se pueden crear préstamos para clientes inactivos",
         )
+
+    # Validar préstamo de socio si aplica
+    if prestamo_data.origen == "socio":
+        if not prestamo_data.socio_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Debe especificar el socio prestamista cuando el origen es socio",
+            )
+
+        socio = db.query(Socio).filter(Socio.id == prestamo_data.socio_id).first()
+        if not socio:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Socio prestamista no encontrado",
+            )
+
+        if not socio.activo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="El socio prestamista no está activo",
+            )
+
+        if float(socio.capital_actual) < float(prestamo_data.monto):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"El socio no tiene capital suficiente. Capital disponible: {socio.capital_actual}, Monto solicitado: {prestamo_data.monto}",
+            )
 
     # Verificar que no existe un préstamo activo para este cliente (opcional)
     prestamo_activo = db.query(Prestamo).filter(
@@ -81,6 +109,14 @@ async def crear_prestamo(
     db_prestamo.saldo_pendiente = db_prestamo.total_pagar
 
     db.add(db_prestamo)
+
+    # Si es un préstamo de socio, reducir su capital disponible
+    if db_prestamo.origen == "socio" and db_prestamo.socio_id:
+        socio = db.query(Socio).filter(Socio.id == db_prestamo.socio_id).first()
+        if socio:
+            socio.capital_actual = float(socio.capital_actual) - float(db_prestamo.monto)
+            db.add(socio)
+
     db.commit()
     db.refresh(db_prestamo)
 

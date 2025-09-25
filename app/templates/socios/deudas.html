@@ -1,0 +1,558 @@
+{% extends "base.html" %}
+
+{% block title %}Deudas con Socios{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="fas fa-hand-holding-usd"></i>
+                    Deudas con Socios
+                </h1>
+                <p class="text-muted mb-0">Gestión de pagos pendientes de la empresa hacia los socios</p>
+            </div>
+            {% if user.is_admin %}
+            <button class="btn btn-success" onclick="mostrarModalNuevoPago()">
+                <i class="fas fa-plus"></i>
+                Registrar Pago
+            </button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas de Deudas -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-danger text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">Total Deuda</h6>
+                        <h2 class="mb-0" id="total-deuda">$0</h2>
+                    </div>
+                    <i class="fas fa-dollar-sign fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">Socios con Deuda</h6>
+                        <h2 class="mb-0" id="socios-deuda">0</h2>
+                    </div>
+                    <i class="fas fa-users fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">Pagos Pendientes</h6>
+                        <h2 class="mb-0" id="pagos-pendientes">0</h2>
+                    </div>
+                    <i class="fas fa-clock fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">Próximo Vencimiento</h6>
+                        <h6 class="mb-0" id="proximo-vencimiento">-</h6>
+                    </div>
+                    <i class="fas fa-calendar-alt fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Deudas -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i>
+                    Socios con Saldos Pendientes
+                </h5>
+                <div id="resumen-deudas" class="text-muted small">
+                    <!-- Aquí se mostrará el resumen -->
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Loading -->
+                <div id="loading" class="text-center py-5" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando deudas...</p>
+                </div>
+
+                <!-- Tabla de Deudas -->
+                <div class="table-responsive" id="contenedor-tabla" style="display: none;">
+                    <table class="table table-striped table-hover" id="tabla-deudas">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Socio</th>
+                                <th>Capital Actual</th>
+                                <th>Deuda Empresa</th>
+                                <th>Último Pago</th>
+                                <th>Estado</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla">
+                            <!-- Los datos se cargarán aquí -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mensaje cuando no hay deudas -->
+                <div id="sin-deudas" class="text-center py-5" style="display: none;">
+                    <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                    <h5 class="text-success">¡Excelente! No hay deudas pendientes</h5>
+                    <p class="text-muted">Todos los pagos a socios están al día</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Historial de Pagos Recientes -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-history"></i>
+                    Historial de Pagos Recientes
+                </h5>
+            </div>
+            <div class="card-body">
+                <div id="historial-pagos">
+                    <div class="text-center py-3">
+                        <div class="spinner-border text-primary spinner-border-sm" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <small class="text-muted ms-2">Cargando historial...</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuevo Pago -->
+<div class="modal fade" id="modalNuevoPago" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus"></i>
+                    Registrar Pago a Socio
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-nuevo-pago">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-socio" class="form-label">
+                                Socio <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="modal-socio" name="socio_id" required>
+                                <option value="">Seleccionar socio...</option>
+                                <!-- Los socios se cargarán aquí -->
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-tipo" class="form-label">
+                                Tipo de Pago <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="modal-tipo" name="tipo" required>
+                                <option value="">Seleccionar tipo...</option>
+                                <option value="devolucion">Devolución de capital</option>
+                                <option value="ganancia">Pago de ganancias</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-monto" class="form-label">
+                                Monto <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="modal-monto"
+                                       name="monto" min="0.01" step="0.01" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-fecha" class="form-label">
+                                Fecha <span class="text-danger">*</span>
+                            </label>
+                            <input type="datetime-local" class="form-control" id="modal-fecha"
+                                   name="fecha_pago" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-metodo" class="form-label">Método de Pago</label>
+                            <select class="form-select" id="modal-metodo" name="metodo_pago">
+                                <option value="">Seleccionar método...</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="tarjeta">Tarjeta</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-recibo" class="form-label">Número de Recibo</label>
+                            <input type="text" class="form-control" id="modal-recibo"
+                                   name="numero_recibo" placeholder="Opcional">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modal-descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="modal-descripcion" name="descripcion"
+                                  rows="3" placeholder="Detalles del pago..."></textarea>
+                    </div>
+
+                    <div id="info-saldo" class="alert alert-info" style="display: none;">
+                        <strong>Información del Socio:</strong><br>
+                        <span id="info-socio"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-success" onclick="registrarPago()">
+                    <i class="fas fa-save"></i>
+                    Registrar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Definir información del usuario para JavaScript
+const user = {
+    is_admin: {{ user.is_admin|lower }}
+};
+
+let currentDeudas = [];
+
+async function cargarDeudas() {
+    try {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('contenedor-tabla').style.display = 'none';
+        document.getElementById('sin-deudas').style.display = 'none';
+
+        // Cargar todos los socios
+        const response = await Utils.ajax('/api/socios?limit=1000');
+        const todosSocios = response;
+
+        // Filtrar solo socios con deuda (capital_actual > 0)
+        const sociosConDeuda = todosSocios.filter(socio => parseFloat(socio.capital_actual) > 0);
+
+        currentDeudas = sociosConDeuda;
+        mostrarDeudas(sociosConDeuda);
+        actualizarEstadisticas(sociosConDeuda);
+        cargarHistorialPagos();
+
+    } catch (error) {
+        console.error('Error cargando deudas:', error);
+        Utils.showError('Error al cargar las deudas');
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('sin-deudas').style.display = 'block';
+    }
+}
+
+function mostrarDeudas(socios) {
+    document.getElementById('loading').style.display = 'none';
+
+    if (socios.length === 0) {
+        document.getElementById('sin-deudas').style.display = 'block';
+        document.getElementById('contenedor-tabla').style.display = 'none';
+        document.getElementById('resumen-deudas').innerHTML = '';
+        return;
+    }
+
+    // Actualizar resumen
+    document.getElementById('resumen-deudas').innerHTML =
+        `Mostrando ${socios.length} socio${socios.length !== 1 ? 's' : ''} con deuda pendiente`;
+
+    // Llenar tabla
+    const tbody = document.getElementById('cuerpo-tabla');
+    tbody.innerHTML = '';
+
+    socios.forEach(socio => {
+        const capitalActual = parseFloat(socio.capital_actual);
+        const estadoBadge = capitalActual > 0 ?
+            '<span class="badge bg-danger">Con Deuda</span>' :
+            '<span class="badge bg-success">Al Día</span>';
+
+        const acciones = `
+            <div class="btn-group btn-group-sm" role="group">
+                <a href="/socios/${socio.id}/detalle" class="btn btn-outline-primary" title="Ver detalle">
+                    <i class="fas fa-eye"></i>
+                </a>
+                ${user.is_admin ? `
+                <button class="btn btn-outline-success" onclick="pagarSocio(${socio.id})" title="Registrar pago">
+                    <i class="fas fa-dollar-sign"></i>
+                </button>
+                <a href="/socios/pagos?socio_id=${socio.id}" class="btn btn-outline-info" title="Ver pagos">
+                    <i class="fas fa-history"></i>
+                </a>
+                ` : ''}
+            </div>
+        `;
+
+        const row = `
+            <tr>
+                <td>
+                    <div>
+                        <strong>${socio.nombre_completo}</strong>
+                        <br><small class="text-muted">CC: ${socio.cedula}</small>
+                        ${socio.telefono ? `<br><small class="text-muted"><i class="fas fa-phone"></i> ${socio.telefono}</small>` : ''}
+                    </div>
+                </td>
+                <td class="text-primary">
+                    <strong>${Utils.formatCurrency(socio.capital_actual)}</strong>
+                </td>
+                <td class="text-danger">
+                    <strong>${Utils.formatCurrency(capitalActual)}</strong>
+                </td>
+                <td>
+                    <small class="text-muted">Información no disponible</small>
+                </td>
+                <td>${estadoBadge}</td>
+                <td>${acciones}</td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+
+    document.getElementById('contenedor-tabla').style.display = 'block';
+}
+
+function actualizarEstadisticas(socios) {
+    const totalDeuda = socios.reduce((sum, socio) => sum + parseFloat(socio.capital_actual), 0);
+    const sociosDeuda = socios.length;
+
+    // Para pagos pendientes, necesitaríamos lógica más compleja
+    // Por ahora mostramos el número de socios con deuda
+    const pagosPendientes = sociosDeuda;
+
+    document.getElementById('total-deuda').textContent = Utils.formatCurrency(totalDeuda);
+    document.getElementById('socios-deuda').textContent = sociosDeuda;
+    document.getElementById('pagos-pendientes').textContent = pagosPendientes;
+    document.getElementById('proximo-vencimiento').innerHTML = '<small>No disponible</small>';
+}
+
+async function cargarHistorialPagos() {
+    try {
+        // Cargar pagos recientes de todos los socios
+        let allPagos = [];
+        for (const socio of currentDeudas.slice(0, 5)) { // Solo primeros 5 socios para performance
+            try {
+                const response = await Utils.ajax(`/api/socios/${socio.id}/pagos?limit=3`);
+                allPagos = allPagos.concat(response.map(pago => ({ ...pago, socio_nombre: socio.nombre_completo })));
+            } catch (error) {
+                console.error(`Error cargando pagos de socio ${socio.id}:`, error);
+            }
+        }
+
+        // Ordenar por fecha descendente y tomar los más recientes
+        allPagos.sort((a, b) => new Date(b.fecha_pago) - new Date(a.fecha_pago));
+        const pagosRecientes = allPagos.slice(0, 10);
+
+        mostrarHistorialPagos(pagosRecientes);
+
+    } catch (error) {
+        console.error('Error cargando historial:', error);
+        document.getElementById('historial-pagos').innerHTML =
+            '<div class="text-center text-muted"><small>Error al cargar historial</small></div>';
+    }
+}
+
+function mostrarHistorialPagos(pagos) {
+    const container = document.getElementById('historial-pagos');
+
+    if (!pagos || pagos.length === 0) {
+        container.innerHTML = '<div class="text-center text-muted py-3"><small>No hay pagos registrados</small></div>';
+        return;
+    }
+
+    let html = '<div class="list-group list-group-flush">';
+    pagos.forEach(pago => {
+        const fecha = new Date(pago.fecha_pago).toLocaleDateString('es-CO');
+        const tipoBadge = getTipoBadge(pago.tipo);
+        const socio = pago.socio_nombre || 'Socio';
+
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <div>
+                        <h6 class="mb-1">${tipoBadge} a ${socio}</h6>
+                        <p class="mb-1 text-muted small">${Utils.formatCurrency(pago.monto)}</p>
+                    </div>
+                    <small class="text-muted">${fecha}</small>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function getTipoBadge(tipo) {
+    const badges = {
+        'aporte': '<span class="badge bg-success">Aporte</span>',
+        'prestamo': '<span class="badge bg-primary">Préstamo</span>',
+        'devolucion': '<span class="badge bg-info">Devolución</span>',
+        'ganancia': '<span class="badge bg-warning text-dark">Ganancia</span>'
+    };
+    return badges[tipo] || '<span class="badge bg-secondary">Otro</span>';
+}
+
+// Funciones de acciones
+function pagarSocio(socioId) {
+    // Pre-seleccionar el socio en el modal
+    document.getElementById('modal-socio').value = socioId;
+    mostrarModalNuevoPago();
+}
+
+function mostrarModalNuevoPago() {
+    // Cargar lista de socios en el modal
+    const selectSocio = document.getElementById('modal-socio');
+    selectSocio.innerHTML = '<option value="">Seleccionar socio...</option>';
+
+    currentDeudas.forEach(socio => {
+        const option = document.createElement('option');
+        option.value = socio.id;
+        option.textContent = `${socio.nombre_completo} (CC: ${socio.cedula})`;
+        selectSocio.appendChild(option);
+    });
+
+    // Set default date
+    const now = new Date();
+    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    document.getElementById('modal-fecha').value = localDateTime.toISOString().slice(0, 16);
+
+    const modal = new bootstrap.Modal(document.getElementById('modalNuevoPago'));
+    modal.show();
+}
+
+async function registrarPago() {
+    const form = document.getElementById('form-nuevo-pago');
+
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
+
+    try {
+        // Mostrar loading
+        const submitBtn = document.querySelector('#modalNuevoPago .btn-success');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
+        submitBtn.disabled = true;
+
+        // Recopilar datos
+        const formData = new FormData(form);
+        const pagoData = {};
+
+        for (let [key, value] of formData.entries()) {
+            if (value.trim() !== '') {
+                if (key === 'socio_id' || key === 'monto') {
+                    pagoData[key] = key === 'socio_id' ? parseInt(value) : parseFloat(value);
+                } else {
+                    pagoData[key] = value;
+                }
+            }
+        }
+
+        // Registrar pago
+        const response = await Utils.ajax(`/api/socios/${pagoData.socio_id}/pagos`, {
+            method: 'POST',
+            body: JSON.stringify(pagoData)
+        });
+
+        Utils.showSuccess('Pago registrado exitosamente');
+
+        // Cerrar modal y recargar
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalNuevoPago'));
+        modal.hide();
+
+        // Recargar datos
+        await cargarDeudas();
+
+    } catch (error) {
+        console.error('Error registrando pago:', error);
+        Utils.showError(error.message || 'Error al registrar el pago');
+    } finally {
+        // Restaurar botón
+        const submitBtn = document.querySelector('#modalNuevoPago .btn-success');
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Registrar Pago';
+        submitBtn.disabled = false;
+    }
+}
+
+// Event listener para cambio de socio en el modal
+document.getElementById('modal-socio').addEventListener('change', async function() {
+    const socioId = this.value;
+    const infoDiv = document.getElementById('info-saldo');
+
+    if (socioId) {
+        try {
+            const socio = currentDeudas.find(s => s.id == socioId);
+            if (socio) {
+                document.getElementById('info-socio').innerHTML =
+                    `Capital actual: ${Utils.formatCurrency(socio.capital_actual)}<br>` +
+                    `Deuda pendiente: ${Utils.formatCurrency(socio.capital_actual)}`;
+                infoDiv.style.display = 'block';
+            }
+        } catch (error) {
+            console.error('Error cargando información del socio:', error);
+        }
+    } else {
+        infoDiv.style.display = 'none';
+    }
+});
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    cargarDeudas();
+});
+</script>
+{% endblock %}

@@ -201,6 +201,11 @@
 
 {% block extra_scripts %}
 <script>
+// Definir información del usuario para JavaScript
+const user = {
+    is_admin: {{ user.is_admin|lower }}
+};
+
 let currentSocios = [];
 let currentFilters = {};
 let currentPage = 0;
