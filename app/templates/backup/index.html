@@ -1,0 +1,439 @@
+{% extends "base.html" %}
+
+{% block title %}Gestión de Backups{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="fas fa-database"></i>
+                    Gestión de Backups
+                </h1>
+                <p class="text-muted mb-0">Crea, descarga y restaura backups completos de la base de datos</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-bar"></i>
+                    Estadísticas de Backups
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row" id="estadisticas-container">
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-file-archive fa-2x text-primary mb-2"></i>
+                            <h4 id="total-backups">0</h4>
+                            <p class="text-muted mb-0">Total Backups</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-hdd fa-2x text-success mb-2"></i>
+                            <h4 id="total-size">0 MB</h4>
+                            <p class="text-muted mb-0">Espacio Total</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="text-center">
+                            <i class="fas fa-folder fa-2x text-info mb-2"></i>
+                            <h4 id="backup-dir">-</h4>
+                            <p class="text-muted mb-0">Directorio</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Crear Backup -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-plus"></i>
+                    Crear Nuevo Backup
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Crea un backup completo de toda la base de datos incluyendo clientes, préstamos, pagos, socios y configuraciones.</p>
+
+                <button type="button" class="btn btn-primary btn-lg w-100" id="crear-backup-btn" onclick="crearBackup()">
+                    <i class="fas fa-download"></i>
+                    Crear Backup Ahora
+                </button>
+
+                <div class="alert alert-info mt-3 d-none" id="crear-backup-alert">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="crear-backup-message"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Restaurar Backup -->
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-upload"></i>
+                    Restaurar Backup
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Sube un archivo de backup (.db) para restaurar la base de datos completa. Se creará un backup de seguridad automáticamente.</p>
+
+                <form id="restaurar-form" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="backup-file" class="form-label">
+                            Archivo de Backup <span class="text-danger">*</span>
+                        </label>
+                        <input type="file" class="form-control" id="backup-file" name="file" accept=".db" required>
+                        <div class="form-text">Solo archivos .db (máximo 100MB)</div>
+                    </div>
+
+                    <button type="submit" class="btn btn-warning btn-lg w-100" id="restaurar-btn">
+                        <i class="fas fa-upload"></i>
+                        Restaurar Backup
+                    </button>
+                </form>
+
+                <div class="alert alert-warning mt-3 d-none" id="restaurar-alert">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <span id="restaurar-message"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Backups -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i>
+                    Backups Disponibles
+                </h5>
+                <button type="button" class="btn btn-sm btn-outline-primary" onclick="cargarBackups()">
+                    <i class="fas fa-sync"></i>
+                    Actualizar
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="backups-container">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando backups...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Confirmación de Restauración -->
+<div class="modal fade" id="confirmarRestauracionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                    Confirmar Restauración
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro de que quieres restaurar la base de datos?</p>
+                <div class="alert alert-warning">
+                    <strong>Advertencia:</strong> Esta acción reemplazará completamente la base de datos actual.
+                    Se creará automáticamente un backup de seguridad antes de proceder.
+                </div>
+                <p><strong>Archivo:</strong> <span id="archivo-a-restaurar"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning" id="confirmar-restaurar-btn">
+                    <i class="fas fa-upload"></i>
+                    Confirmar Restauración
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// Definir información del usuario para JavaScript
+const user = {
+    is_admin: {{ user.is_admin|lower }}
+};
+
+// Variables globales
+let backupsData = [];
+
+// Cargar datos al iniciar
+document.addEventListener('DOMContentLoaded', function() {
+    cargarEstadisticas();
+    cargarBackups();
+});
+
+// Cargar estadísticas
+async function cargarEstadisticas() {
+    try {
+        const response = await Utils.ajax('/api/backup/estadisticas');
+
+        document.getElementById('total-backups').textContent = response.total_backups;
+        document.getElementById('total-size').textContent = response.total_size_human;
+        document.getElementById('backup-dir').textContent = response.backup_directory.split('\\').pop();
+
+    } catch (error) {
+        console.error('Error cargando estadísticas:', error);
+        Utils.showError('Error al cargar estadísticas');
+    }
+}
+
+// Cargar lista de backups
+async function cargarBackups() {
+    const container = document.getElementById('backups-container');
+
+    try {
+        const response = await Utils.ajax('/api/backup/listar');
+        backupsData = response;
+
+        if (backupsData.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-database fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No hay backups disponibles</h5>
+                    <p class="text-muted">Crea tu primer backup para comenzar</p>
+                </div>
+            `;
+            return;
+        }
+
+        let html = `
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th><i class="fas fa-file"></i> Archivo</th>
+                            <th><i class="fas fa-calendar"></i> Fecha de Creación</th>
+                            <th><i class="fas fa-hdd"></i> Tamaño</th>
+                            <th><i class="fas fa-cogs"></i> Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        backupsData.forEach(backup => {
+            const fecha = new Date(backup.created_at).toLocaleString('es-CO');
+            const tipoBadge = backup.filename.includes('security_backup_')
+                ? '<span class="badge bg-warning">Seguridad</span>'
+                : '<span class="badge bg-primary">Manual</span>';
+
+            html += `
+                <tr>
+                    <td>
+                        <strong>${backup.filename}</strong>
+                        <br>
+                        <small class="text-muted">${tipoBadge}</small>
+                    </td>
+                    <td>${fecha}</td>
+                    <td>${backup.size_human}</td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button type="button" class="btn btn-outline-primary"
+                                    onclick="descargarBackup('${backup.filename}')"
+                                    title="Descargar">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            ${backup.filename.includes('security_backup_') ? '' : `
+                            <button type="button" class="btn btn-outline-danger"
+                                    onclick="eliminarBackup('${backup.filename}')"
+                                    title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                            `}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error('Error cargando backups:', error);
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Error al cargar backups: ${error.message || 'Error desconocido'}
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Crear nuevo backup
+async function crearBackup() {
+    const btn = document.getElementById('crear-backup-btn');
+    const alert = document.getElementById('crear-backup-alert');
+    const message = document.getElementById('crear-backup-message');
+
+    // Deshabilitar botón
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando Backup...';
+
+    try {
+        const response = await Utils.ajax('/api/backup/crear', { method: 'POST' });
+
+        // Mostrar mensaje de éxito
+        alert.className = 'alert alert-success mt-3';
+        alert.classList.remove('d-none');
+        message.textContent = `Backup "${response.filename}" se está creando en segundo plano. Refresca la página en unos momentos para verlo en la lista.`;
+
+        // Actualizar estadísticas
+        setTimeout(() => {
+            cargarEstadisticas();
+            cargarBackups();
+        }, 2000);
+
+    } catch (error) {
+        console.error('Error creando backup:', error);
+
+        // Mostrar mensaje de error
+        alert.className = 'alert alert-danger mt-3';
+        alert.classList.remove('d-none');
+        message.textContent = error.message || 'Error al crear backup';
+
+    } finally {
+        // Restaurar botón
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-download"></i> Crear Backup Ahora';
+    }
+}
+
+// Descargar backup
+function descargarBackup(filename) {
+    // Crear enlace temporal para descarga
+    const link = document.createElement('a');
+    link.href = `/api/backup/descargar/${filename}`;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// Eliminar backup
+async function eliminarBackup(filename) {
+    if (!confirm(`¿Estás seguro de que quieres eliminar el backup "${filename}"?`)) {
+        return;
+    }
+
+    try {
+        await Utils.ajax(`/api/backup/${filename}`, { method: 'DELETE' });
+
+        Utils.showSuccess(`Backup "${filename}" eliminado correctamente`);
+        cargarEstadisticas();
+        cargarBackups();
+
+    } catch (error) {
+        console.error('Error eliminando backup:', error);
+        Utils.showError(error.message || 'Error al eliminar backup');
+    }
+}
+
+// Manejar formulario de restauración
+document.getElementById('restaurar-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const fileInput = document.getElementById('backup-file');
+    const file = fileInput.files[0];
+
+    if (!file) {
+        Utils.showError('Por favor selecciona un archivo de backup');
+        return;
+    }
+
+    // Mostrar modal de confirmación
+    document.getElementById('archivo-a-restaurar').textContent = file.name;
+    const modal = new bootstrap.Modal(document.getElementById('confirmarRestauracionModal'));
+    modal.show();
+
+    // Configurar botón de confirmación
+    document.getElementById('confirmar-restaurar-btn').onclick = () => {
+        modal.hide();
+        restaurarBackup(file);
+    };
+});
+
+// Restaurar backup
+async function restaurarBackup(file) {
+    const btn = document.getElementById('restaurar-btn');
+    const alert = document.getElementById('restaurar-alert');
+    const message = document.getElementById('restaurar-message');
+
+    // Deshabilitar botón
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restaurando...';
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await Utils.ajax('/api/backup/restaurar', {
+            method: 'POST',
+            body: formData,
+            headers: {} // No set Content-Type, let browser set it with boundary
+        });
+
+        // Mostrar mensaje de éxito
+        alert.className = 'alert alert-success mt-3';
+        alert.classList.remove('d-none');
+        message.textContent = `Restauración en proceso. Se creó backup de seguridad: ${response.security_backup}. La página se recargará automáticamente en 5 segundos.`;
+
+        // Recargar página después de 5 segundos
+        setTimeout(() => {
+            window.location.reload();
+        }, 5000);
+
+    } catch (error) {
+        console.error('Error restaurando backup:', error);
+
+        // Mostrar mensaje de error
+        alert.className = 'alert alert-danger mt-3';
+        alert.classList.remove('d-none');
+        message.textContent = error.message || 'Error al restaurar backup';
+
+    } finally {
+        // Restaurar botón
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-upload"></i> Restaurar Backup';
+    }
+}
+</script>
+{% endblock %}

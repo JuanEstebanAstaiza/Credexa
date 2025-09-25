@@ -46,7 +46,7 @@ class Usuario(Base):
     @property
     def is_admin(self) -> bool:
         """Verificar si el usuario es administrador"""
-        return self.rol.nombre.lower() == "administrador"
+        return self.rol.nombre.lower() == "admin"
 
     @property
     def is_digitador(self) -> bool:

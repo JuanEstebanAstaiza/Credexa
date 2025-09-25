@@ -55,9 +55,19 @@ class Usuario(UsuarioBase):
     creado_en: datetime
     actualizado_en: Optional[datetime]
     rol: Rol
+    is_admin: bool
+    is_digitador: bool
 
     class Config:
         from_attributes = True
+
+    @classmethod
+    def from_orm(cls, obj):
+        """Crear instancia desde objeto ORM incluyendo propiedades calculadas"""
+        data = super().from_orm(obj).__dict__
+        data['is_admin'] = obj.is_admin
+        data['is_digitador'] = obj.is_digitador
+        return cls(**data)
 
 # Esquemas para autenticación
 class LoginRequest(BaseModel):

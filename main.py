@@ -503,6 +503,19 @@ async def socios_retiro(
         "socio": socios[0] if socios else None  # Socio por defecto para compatibilidad
     })
 
+# Ruta de Backup
+@app.get("/backup", response_class=HTMLResponse)
+async def backup_index(
+    request: Request,
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Página de gestión de backups"""
+    return templates.TemplateResponse("backup/index.html", {
+        "request": request,
+        "title": "Gestión de Backups",
+        "user": current_user
+    })
+
 # Ruta de Perfil de Usuario
 @app.get("/perfil", response_class=HTMLResponse)
 async def perfil_usuario(
