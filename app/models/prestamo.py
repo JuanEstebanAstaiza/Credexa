@@ -13,6 +13,7 @@ class Prestamo(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False, index=True)
+    socio_id = Column(Integer, ForeignKey("socios.id"), nullable=True, index=True)  # Socio que presta el dinero
 
     # Datos del préstamo
     monto = Column(Numeric(15, 2), nullable=False)  # Monto total del préstamo
@@ -36,6 +37,7 @@ class Prestamo(Base):
     es_refinanciacion = Column(Integer, default=0, nullable=False)  # 1 si es refinanciación, 0 si no
 
     # Información adicional
+    origen = Column(String(20), nullable=False, default="empresa")  # 'empresa' o 'socio'
     observaciones = Column(Text, nullable=True)  # Notas del préstamo
 
     # Timestamps
@@ -44,7 +46,9 @@ class Prestamo(Base):
 
     # Relaciones
     cliente = relationship("Cliente", back_populates="prestamos")
+    socio = relationship("Socio", back_populates="prestamos")
     pagos = relationship("Pago", back_populates="prestamo", cascade="all, delete-orphan")
+    pagos_socio = relationship("PagoSocio", back_populates="prestamo", cascade="all, delete-orphan")
 
     # Relación para refinanciaciones
     refinanciaciones = relationship("Prestamo", backref="prestamo_padre", remote_side=[id])

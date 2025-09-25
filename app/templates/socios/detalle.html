@@ -1,0 +1,342 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="fas fa-user"></i>
+                    {{ title }}
+                </h1>
+                <p class="text-muted mb-0">Información detallada del socio</p>
+            </div>
+            <div>
+                {% if user.is_admin %}
+                <a href="/socios/{{ socio.id }}/editar" class="btn btn-warning me-2">
+                    <i class="fas fa-edit"></i>
+                    Editar
+                </a>
+                {% endif %}
+                <a href="/socios/lista" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información del Socio -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-id-card"></i>
+                    Información Personal
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Nombre:</strong> {{ socio.nombre_completo }}</p>
+                        <p><strong>Cédula:</strong> {{ socio.cedula }}</p>
+                        <p><strong>Estado:</strong>
+                            {% if socio.activo %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Teléfono:</strong> {{ socio.telefono or 'No registrado' }}</p>
+                        <p><strong>Email:</strong> {{ socio.email or 'No registrado' }}</p>
+                        {% if socio.fecha_nacimiento %}
+                        <p><strong>Fecha Nacimiento:</strong> {{ socio.fecha_nacimiento.strftime('%d/%m/%Y') }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if socio.direccion or socio.ocupacion or socio.ingresos_mensuales %}
+                <hr>
+                <div class="row">
+                    {% if socio.direccion %}
+                    <div class="col-md-6">
+                        <p><strong>Dirección:</strong> {{ socio.direccion }}</p>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-6">
+                        {% if socio.ocupacion %}
+                        <p><strong>Ocupación:</strong> {{ socio.ocupacion }}</p>
+                        {% endif %}
+                        {% if socio.ingresos_mensuales %}
+                        <p><strong>Ingresos Mensuales:</strong> ${{ "{:,.0f}".format(socio.ingresos_mensuales) }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endif %}
+
+                {% if socio.referencias_personales %}
+                <hr>
+                <p><strong>Referencias Personales:</strong></p>
+                <p class="text-muted">{{ socio.referencias_personales }}</p>
+                {% endif %}
+
+                {% if socio.notas %}
+                <hr>
+                <p><strong>Notas:</strong></p>
+                <p class="text-muted">{{ socio.notas }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-chart-pie"></i>
+                    Estado Financiero
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-12 mb-3">
+                        <h6 class="text-success">Capital Inicial</h6>
+                        <h4 class="text-success">${{ "{:,.0f}".format(socio.capital_inicial) }}</h4>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <h6 class="text-primary">Capital Actual</h6>
+                        <h4 class="text-primary" id="capital-actual">${{ "{:,.0f}".format(socio.capital_actual) }}</h4>
+                    </div>
+                    <div class="col-12 mb-3">
+                        <h6 class="text-info">Capital Disponible</h6>
+                        <h4 class="text-info" id="capital-disponible">${{ "{:,.0f}".format(socio.capital_disponible) }}</h4>
+                    </div>
+                    <div class="col-12">
+                        <h6 class="text-secondary">Participación</h6>
+                        <h4 class="text-secondary">{{ socio.porcentaje_participacion }}%</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body text-center">
+                <h3 id="total-prestamos">0</h3>
+                <p class="mb-0">Préstamos Activos</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body text-center">
+                <h3 id="total-invertido">$0</h3>
+                <p class="mb-0">Total Invertido</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body text-center">
+                <h3 id="pagos-mes">0</h3>
+                <p class="mb-0">Pagos del Mes</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-danger text-white h-100">
+            <div class="card-body text-center">
+                <h3 id="total-pagos">0</h3>
+                <p class="mb-0">Total de Pagos</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Acciones Rápidas -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-bolt"></i>
+                    Acciones Rápidas
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% if user.is_admin %}
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-success w-100" onclick="registrarAporte()">
+                            <i class="fas fa-plus-circle"></i>
+                            <br>Nuevo Aporte
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-primary w-100" onclick="registrarPrestamo()">
+                            <i class="fas fa-hand-holding-usd"></i>
+                            <br>Préstamo al Socio
+                        </button>
+                    </div>
+                    {% endif %}
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-info w-100" onclick="verPagos()">
+                            <i class="fas fa-money-bill-wave"></i>
+                            <br>Ver Pagos
+                        </button>
+                    </div>
+                    <div class="col-md-3 mb-2">
+                        <button class="btn btn-warning w-100" onclick="verPrestamos()">
+                            <i class="fas fa-list"></i>
+                            <br>Ver Préstamos
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pagos Recientes -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-history"></i>
+                    Pagos Recientes
+                </h5>
+                <a href="/socios/pagos?socio_id={{ socio.id }}" class="btn btn-sm btn-outline-primary">
+                    Ver Todos
+                </a>
+            </div>
+            <div class="card-body">
+                <div id="pagos-recientes">
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Cargando pagos recientes...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let socioData = null;
+
+async function cargarDetalleSocio() {
+    try {
+        const response = await Utils.ajax(`/api/socios/${socio.id}`);
+        socioData = response;
+
+        // Actualizar estadísticas
+        document.getElementById('total-prestamos').textContent = response.prestamos_activos;
+        document.getElementById('total-invertido').textContent = Utils.formatCurrency(response.total_invertido);
+        document.getElementById('capital-actual').textContent = Utils.formatCurrency(response.capital_actual);
+        document.getElementById('capital-disponible').textContent = Utils.formatCurrency(response.capital_disponible);
+
+        // Cargar estadísticas de pagos
+        const statsResponse = await Utils.ajax(`/api/socios/${socio.id}/estadisticas`);
+        document.getElementById('pagos-mes').textContent = statsResponse.pagos_mes_actual;
+        document.getElementById('total-pagos').textContent = statsResponse.total_aportes + statsResponse.total_prestamos +
+                                                          statsResponse.total_devoluciones + statsResponse.total_ganancias;
+
+        // Mostrar pagos recientes
+        mostrarPagosRecientes(response.pagos_recientes);
+
+    } catch (error) {
+        console.error('Error cargando detalle del socio:', error);
+        Utils.showError('Error al cargar los detalles del socio');
+    }
+}
+
+function mostrarPagosRecientes(pagos) {
+    const container = document.getElementById('pagos-recientes');
+
+    if (!pagos || pagos.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
+                <h6 class="text-muted">No hay pagos registrados</h6>
+                <p class="text-muted small">Los pagos realizados aparecerán aquí</p>
+            </div>
+        `;
+        return;
+    }
+
+    let html = '<div class="list-group list-group-flush">';
+
+    pagos.forEach(pago => {
+        const tipoBadge = getTipoBadge(pago.tipo);
+        const fecha = new Date(pago.fecha).toLocaleDateString('es-CO');
+
+        html += `
+            <div class="list-group-item">
+                <div class="d-flex w-100 justify-content-between">
+                    <div>
+                        <h6 class="mb-1">${tipoBadge} - ${Utils.formatCurrency(pago.monto)}</h6>
+                        <p class="mb-1 text-muted small">${pago.descripcion || 'Sin descripción'}</p>
+                    </div>
+                    <small class="text-muted">${fecha}</small>
+                </div>
+            </div>
+        `;
+    });
+
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+function getTipoBadge(tipo) {
+    const badges = {
+        'aporte': '<span class="badge bg-success">Aporte</span>',
+        'prestamo': '<span class="badge bg-primary">Préstamo</span>',
+        'devolucion': '<span class="badge bg-info">Devolución</span>',
+        'ganancia': '<span class="badge bg-warning text-dark">Ganancia</span>'
+    };
+    return badges[tipo] || '<span class="badge bg-secondary">Otro</span>';
+}
+
+// Funciones de acciones rápidas
+function registrarAporte() {
+    // Aquí se podría abrir un modal o redirigir a una página de registro de aporte
+    Utils.showInfo('Función de registro de aporte próximamente disponible');
+}
+
+function registrarPrestamo() {
+    Utils.showInfo('Función de préstamo al socio próximamente disponible');
+}
+
+function verPagos() {
+    window.location.href = `/socios/pagos?socio_id=${socio.id}`;
+}
+
+function verPrestamos() {
+    // Redirigir a la lista de préstamos filtrada por este socio
+    window.location.href = `/prestamos/lista?socio_id=${socio.id}`;
+}
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', function() {
+    cargarDetalleSocio();
+});
+</script>
+{% endblock %}

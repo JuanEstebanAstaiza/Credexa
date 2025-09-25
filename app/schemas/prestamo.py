@@ -10,10 +10,12 @@ from decimal import Decimal
 # Esquemas base
 class PrestamoBase(BaseModel):
     cliente_id: int
+    socio_id: Optional[int] = None  # Socio que presta el dinero (opcional)
     monto: Decimal
     tasa_interes: float
     plazo_meses: int
     fecha_inicio: datetime
+    origen: str = "empresa"  # 'empresa' o 'socio'
     prestamo_padre_id: Optional[int] = None
     es_refinanciacion: Optional[int] = 0
     observaciones: Optional[str] = None
@@ -41,6 +43,21 @@ class PrestamoBase(BaseModel):
             raise ValueError('El plazo debe ser mayor a cero')
         if v > 360:  # Máximo 30 años
             raise ValueError('El plazo no puede ser mayor a 360 meses (30 años)')
+        return v
+
+    @validator('origen')
+    def validar_origen(cls, v):
+        """Validar que el origen sea válido"""
+        if v not in ['empresa', 'socio']:
+            raise ValueError('El origen debe ser "empresa" o "socio"')
+        return v
+
+    @validator('socio_id', always=True)
+    def validar_socio_id(cls, v, values):
+        """Validar que socio_id sea requerido cuando origen es 'socio'"""
+        origen = values.get('origen', 'empresa')
+        if origen == 'socio' and not v:
+            raise ValueError('socio_id es requerido cuando el origen es "socio"')
         return v
 
 

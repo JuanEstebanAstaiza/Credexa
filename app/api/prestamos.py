@@ -3,7 +3,7 @@ Endpoints de gestión de préstamos
 """
 
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, date, timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -246,6 +246,31 @@ async def obtener_estadisticas_prestamos(
     # Convertir a diccionario
     estados_dict = {estado: count for estado, count in estados}
 
+    # Calcular préstamos en mora dinámicamente usando la misma lógica que reportes/morosos
+    hoy = date.today()
+    prestamos_en_mora = 0
+
+    # Para cada préstamo activo, verificar si está en mora
+    prestamos_activos = db.query(Prestamo).filter(Prestamo.estado == "activo").all()
+
+    for prestamo in prestamos_activos:
+        # Obtener última fecha de pago para este préstamo
+        ultima_fecha_pago = db.query(func.max(Pago.fecha_pago)).filter(
+            Pago.prestamo_id == prestamo.id
+        ).scalar()
+
+        # Calcular días de mora
+        if ultima_fecha_pago:
+            # Calcular próxima cuota (última fecha de pago + 1 mes)
+            proxima_cuota = ultima_fecha_pago.date() + timedelta(days=30)
+            if proxima_cuota < hoy:
+                prestamos_en_mora += 1
+        else:
+            # Si nunca ha pagado, calcular desde fecha de inicio + 30 días
+            fecha_vencimiento = prestamo.fecha_inicio.date() + timedelta(days=30)
+            if fecha_vencimiento < hoy:
+                prestamos_en_mora += 1
+
     # Calcular monto total pagado
     monto_pagado = float(stats.monto_total_prestado or 0) - float(stats.monto_total_pendiente or 0)
 
@@ -253,7 +278,7 @@ async def obtener_estadisticas_prestamos(
         total_prestamos=stats.total_prestamos or 0,
         prestamos_activos=estados_dict.get('activo', 0),
         prestamos_pagados=estados_dict.get('pagado', 0),
-        prestamos_en_mora=estados_dict.get('mora', 0),
+        prestamos_en_mora=prestamos_en_mora,
         monto_total_prestado=stats.monto_total_prestado or Decimal('0'),
         monto_total_pendiente=stats.monto_total_pendiente or Decimal('0'),
         monto_total_pagado=Decimal(str(monto_pagado)),

@@ -1,0 +1,611 @@
+{% extends "base.html" %}
+
+{% block title %}Pagos de Socios{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="fas fa-money-bill-wave"></i>
+                    Pagos de Socios
+                </h1>
+                <p class="text-muted mb-0">Gestión de movimientos financieros con socios</p>
+            </div>
+            <div>
+                {% if user.is_admin %}
+                <button class="btn btn-success me-2" onclick="mostrarModalNuevoPago()">
+                    <i class="fas fa-plus"></i>
+                    Nuevo Pago
+                </button>
+                {% endif %}
+                <a href="/socios/lista" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Estadísticas Generales -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card bg-success text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">Total Aportes</h6>
+                        <h2 class="mb-0" id="total-aportes">$0</h2>
+                    </div>
+                    <i class="fas fa-plus-circle fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-primary text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">Total Préstamos</h6>
+                        <h2 class="mb-0" id="total-prestamos-socio">$0</h2>
+                    </div>
+                    <i class="fas fa-hand-holding-usd fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-info text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">Total Devoluciones</h6>
+                        <h2 class="mb-0" id="total-devoluciones">$0</h2>
+                    </div>
+                    <i class="fas fa-undo fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3 mb-3">
+        <div class="card bg-warning text-white h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title mb-1">Total Ganancias</h6>
+                        <h2 class="mb-0" id="total-ganancias">$0</h2>
+                    </div>
+                    <i class="fas fa-chart-line fa-2x opacity-75"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filtros y Búsqueda -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-filter"></i>
+                    Filtros y Búsqueda
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="form-filtros">
+                    <div class="row">
+                        <div class="col-md-3 mb-3">
+                            <label for="filtro-socio" class="form-label">Socio</label>
+                            <select class="form-select" id="filtro-socio">
+                                <option value="">Todos los socios</option>
+                                <!-- Los socios se cargarán aquí -->
+                            </select>
+                        </div>
+
+                        <div class="col-md-2 mb-3">
+                            <label for="filtro-tipo" class="form-label">Tipo de Pago</label>
+                            <select class="form-select" id="filtro-tipo">
+                                <option value="">Todos</option>
+                                <option value="aporte">Aportes</option>
+                                <option value="prestamo">Préstamos</option>
+                                <option value="devolucion">Devoluciones</option>
+                                <option value="ganancia">Ganancias</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-2 mb-3">
+                            <label for="filtro-fecha-desde" class="form-label">Fecha Desde</label>
+                            <input type="date" class="form-control" id="filtro-fecha-desde">
+                        </div>
+
+                        <div class="col-md-2 mb-3">
+                            <label for="filtro-fecha-hasta" class="form-label">Fecha Hasta</label>
+                            <input type="date" class="form-control" id="filtro-fecha-hasta">
+                        </div>
+
+                        <div class="col-md-3 mb-3 d-flex align-items-end">
+                            <div class="d-grid gap-2 d-md-flex">
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-search"></i>
+                                    Buscar
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="resetFiltros()">
+                                    <i class="fas fa-undo"></i>
+                                    Limpiar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Lista de Pagos -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i>
+                    Movimientos Financieros
+                </h5>
+                <div id="resumen-pagos" class="text-muted small">
+                    <!-- Aquí se mostrará el resumen -->
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Loading -->
+                <div id="loading" class="text-center py-5" style="display: none;">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Cargando...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Cargando movimientos...</p>
+                </div>
+
+                <!-- Tabla de Pagos -->
+                <div class="table-responsive" id="contenedor-tabla" style="display: none;">
+                    <table class="table table-striped table-hover" id="tabla-pagos">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Socio</th>
+                                <th>Tipo</th>
+                                <th>Monto</th>
+                                <th>Método</th>
+                                <th>Recibo</th>
+                                <th>Saldo Anterior</th>
+                                <th>Saldo Nuevo</th>
+                                <th>Descripción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cuerpo-tabla">
+                            <!-- Los datos se cargarán aquí -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Mensaje cuando no hay resultados -->
+                <div id="sin-resultados" class="text-center py-5" style="display: none;">
+                    <i class="fas fa-money-bill-wave fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No se encontraron movimientos</h5>
+                    <p class="text-muted">No hay pagos registrados que coincidan con los filtros aplicados</p>
+                    {% if user.is_admin %}
+                    <button class="btn btn-primary mt-3" onclick="mostrarModalNuevoPago()">
+                        <i class="fas fa-plus"></i>
+                        Registrar Primer Pago
+                    </button>
+                    {% endif %}
+                </div>
+
+                <!-- Paginación -->
+                <div id="paginacion" class="d-flex justify-content-center mt-4" style="display: none;">
+                    <nav aria-label="Paginación de pagos">
+                        <ul class="pagination" id="controles-paginacion">
+                            <!-- Los controles se generarán aquí -->
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nuevo Pago -->
+<div class="modal fade" id="modalNuevoPago" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus-circle"></i>
+                    Registrar Nuevo Pago
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-nuevo-pago">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-socio" class="form-label">
+                                Socio <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="modal-socio" name="socio_id" required>
+                                <option value="">Seleccionar socio...</option>
+                                <!-- Los socios se cargarán aquí -->
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-tipo" class="form-label">
+                                Tipo de Pago <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select" id="modal-tipo" name="tipo" required>
+                                <option value="">Seleccionar tipo...</option>
+                                <option value="aporte">Aporte (ingreso para la empresa)</option>
+                                <option value="prestamo">Préstamo (egreso para la empresa)</option>
+                                <option value="devolucion">Devolución (ingreso para el socio)</option>
+                                <option value="ganancia">Ganancia (ingreso para el socio)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-monto" class="form-label">
+                                Monto <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="modal-monto"
+                                       name="monto" min="0.01" step="0.01" required>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-fecha" class="form-label">
+                                Fecha <span class="text-danger">*</span>
+                            </label>
+                            <input type="datetime-local" class="form-control" id="modal-fecha"
+                                   name="fecha_pago" required>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-metodo" class="form-label">Método de Pago</label>
+                            <select class="form-select" id="modal-metodo" name="metodo_pago">
+                                <option value="">Seleccionar método...</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="tarjeta">Tarjeta</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="modal-recibo" class="form-label">Número de Recibo</label>
+                            <input type="text" class="form-control" id="modal-recibo"
+                                   name="numero_recibo" placeholder="Opcional">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="modal-descripcion" class="form-label">Descripción</label>
+                        <textarea class="form-control" id="modal-descripcion" name="descripcion"
+                                  rows="3" placeholder="Detalles del pago..."></textarea>
+                    </div>
+
+                    <div id="info-saldo" class="alert alert-info" style="display: none;">
+                        <strong>Información de Saldos:</strong><br>
+                        <span id="saldo-actual-info"></span>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>
+                    Cancelar
+                </button>
+                <button type="button" class="btn btn-success" onclick="registrarPago()">
+                    <i class="fas fa-save"></i>
+                    Registrar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+let currentPagos = [];
+let currentSocios = [];
+let currentFilters = {};
+let pageSize = 20;
+
+// Cargar listas iniciales
+async function cargarSocios() {
+    try {
+        const response = await Utils.ajax('/api/socios?limit=1000');
+        currentSocios = response;
+
+        // Llenar select de filtro de socio
+        const selectFiltro = document.getElementById('filtro-socio');
+        selectFiltro.innerHTML = '<option value="">Todos los socios</option>';
+
+        // Llenar select del modal
+        const selectModal = document.getElementById('modal-socio');
+        selectModal.innerHTML = '<option value="">Seleccionar socio...</option>';
+
+        response.forEach(socio => {
+            const option = `<option value="${socio.id}">${socio.nombre_completo} (CC: ${socio.cedula})</option>`;
+            selectFiltro.innerHTML += option;
+            selectModal.innerHTML += option;
+        });
+
+    } catch (error) {
+        console.error('Error cargando socios:', error);
+    }
+}
+
+async function cargarPagos(filtros = {}) {
+    try {
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('contenedor-tabla').style.display = 'none';
+        document.getElementById('sin-resultados').style.display = 'none';
+        document.getElementById('paginacion').style.display = 'none';
+
+        // Para esta vista, cargaremos todos los pagos de todos los socios
+        // En una implementación real, podríamos paginar
+        let allPagos = [];
+
+        // Si hay filtro de socio específico, cargar solo de ese socio
+        if (filtros.socio_id) {
+            const response = await Utils.ajax(`/api/socios/${filtros.socio_id}/pagos`);
+            allPagos = response;
+        } else {
+            // Cargar pagos de todos los socios activos
+            for (const socio of currentSocios.filter(s => s.activo)) {
+                try {
+                    const response = await Utils.ajax(`/api/socios/${socio.id}/pagos?limit=100`);
+                    allPagos = allPagos.concat(response.map(pago => ({ ...pago, socio_nombre: socio.nombre_completo })));
+                } catch (error) {
+                    console.error(`Error cargando pagos de socio ${socio.id}:`, error);
+                }
+            }
+        }
+
+        // Aplicar filtros adicionales
+        let filteredPagos = allPagos;
+
+        if (filtros.tipo) {
+            filteredPagos = filteredPagos.filter(p => p.tipo === filtros.tipo);
+        }
+
+        if (filtros.fecha_desde) {
+            const fechaDesde = new Date(filtros.fecha_desde);
+            filteredPagos = filteredPagos.filter(p => new Date(p.fecha_pago) >= fechaDesde);
+        }
+
+        if (filtros.fecha_hasta) {
+            const fechaHasta = new Date(filtros.fecha_hasta);
+            fechaHasta.setHours(23, 59, 59);
+            filteredPagos = filteredPagos.filter(p => new Date(p.fecha_pago) <= fechaHasta);
+        }
+
+        // Ordenar por fecha descendente
+        filteredPagos.sort((a, b) => new Date(b.fecha_pago) - new Date(a.fecha_pago));
+
+        currentPagos = filteredPagos;
+        mostrarPagos(filteredPagos);
+        actualizarEstadisticas(filteredPagos);
+
+    } catch (error) {
+        console.error('Error cargando pagos:', error);
+        Utils.showError('Error al cargar los pagos');
+
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('sin-resultados').style.display = 'block';
+    }
+}
+
+function mostrarPagos(pagos) {
+    document.getElementById('loading').style.display = 'none';
+
+    if (pagos.length === 0) {
+        document.getElementById('sin-resultados').style.display = 'block';
+        document.getElementById('contenedor-tabla').style.display = 'none';
+        document.getElementById('resumen-pagos').innerHTML = '';
+        return;
+    }
+
+    // Actualizar resumen
+    document.getElementById('resumen-pagos').innerHTML =
+        `Mostrando ${pagos.length} movimiento${pagos.length !== 1 ? 's' : ''}`;
+
+    // Llenar tabla
+    const tbody = document.getElementById('cuerpo-tabla');
+    tbody.innerHTML = '';
+
+    pagos.forEach(pago => {
+        const fecha = new Date(pago.fecha_pago).toLocaleDateString('es-CO');
+        const tipoBadge = getTipoBadge(pago.tipo);
+        const metodoPago = pago.metodo_pago || 'No especificado';
+
+        const row = `
+            <tr>
+                <td>${fecha}</td>
+                <td>${pago.socio_nombre || 'N/A'}</td>
+                <td>${tipoBadge}</td>
+                <td class="text-end">${Utils.formatCurrency(pago.monto)}</td>
+                <td>${metodoPago}</td>
+                <td>${pago.numero_recibo || '-'}</td>
+                <td class="text-end">${Utils.formatCurrency(pago.saldo_anterior)}</td>
+                <td class="text-end">${Utils.formatCurrency(pago.saldo_nuevo)}</td>
+                <td>${pago.descripcion || '-'}</td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+
+    document.getElementById('contenedor-tabla').style.display = 'block';
+}
+
+function actualizarEstadisticas(pagos) {
+    const stats = {
+        aportes: 0,
+        prestamos: 0,
+        devoluciones: 0,
+        ganancias: 0
+    };
+
+    pagos.forEach(pago => {
+        if (pago.tipo === 'aporte') stats.aportes += pago.monto;
+        else if (pago.tipo === 'prestamo') stats.prestamos += pago.monto;
+        else if (pago.tipo === 'devolucion') stats.devoluciones += pago.monto;
+        else if (pago.tipo === 'ganancia') stats.ganancias += pago.monto;
+    });
+
+    document.getElementById('total-aportes').textContent = Utils.formatCurrency(stats.aportes);
+    document.getElementById('total-prestamos-socio').textContent = Utils.formatCurrency(stats.prestamos);
+    document.getElementById('total-devoluciones').textContent = Utils.formatCurrency(stats.devoluciones);
+    document.getElementById('total-ganancias').textContent = Utils.formatCurrency(stats.ganancias);
+}
+
+function getTipoBadge(tipo) {
+    const badges = {
+        'aporte': '<span class="badge bg-success">Aporte</span>',
+        'prestamo': '<span class="badge bg-primary">Préstamo</span>',
+        'devolucion': '<span class="badge bg-info">Devolución</span>',
+        'ganancia': '<span class="badge bg-warning text-dark">Ganancia</span>'
+    };
+    return badges[tipo] || '<span class="badge bg-secondary">Otro</span>';
+}
+
+function resetFiltros() {
+    document.getElementById('filtro-socio').value = '';
+    document.getElementById('filtro-tipo').value = '';
+    document.getElementById('filtro-fecha-desde').value = '';
+    document.getElementById('filtro-fecha-hasta').value = '';
+    currentFilters = {};
+}
+
+// Modal functions
+function mostrarModalNuevoPago() {
+    // Set default date to now
+    const now = new Date();
+    const localDateTime = new Date(now.getTime() - now.getTimezoneOffset() * 60000);
+    document.getElementById('modal-fecha').value = localDateTime.toISOString().slice(0, 16);
+
+    const modal = new bootstrap.Modal(document.getElementById('modalNuevoPago'));
+    modal.show();
+}
+
+async function registrarPago() {
+    const form = document.getElementById('form-nuevo-pago');
+
+    if (!form.checkValidity()) {
+        form.classList.add('was-validated');
+        return;
+    }
+
+    try {
+        // Mostrar loading
+        const submitBtn = document.querySelector('#modalNuevoPago .btn-success');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
+        submitBtn.disabled = true;
+
+        // Recopilar datos
+        const formData = new FormData(form);
+        const pagoData = {};
+
+        for (let [key, value] of formData.entries()) {
+            if (value.trim() !== '') {
+                if (key === 'socio_id' || key === 'monto') {
+                    pagoData[key] = key === 'socio_id' ? parseInt(value) : parseFloat(value);
+                } else {
+                    pagoData[key] = value;
+                }
+            }
+        }
+
+        // Registrar pago
+        const response = await Utils.ajax(`/api/socios/${pagoData.socio_id}/pagos`, {
+            method: 'POST',
+            body: JSON.stringify(pagoData)
+        });
+
+        Utils.showSuccess('Pago registrado exitosamente');
+
+        // Cerrar modal y recargar
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalNuevoPago'));
+        modal.hide();
+
+        // Recargar datos
+        await cargarSocios();
+        await cargarPagos(currentFilters);
+
+    } catch (error) {
+        console.error('Error registrando pago:', error);
+        Utils.showError(error.message || 'Error al registrar el pago');
+    } finally {
+        // Restaurar botón
+        const submitBtn = document.querySelector('#modalNuevoPago .btn-success');
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Registrar Pago';
+        submitBtn.disabled = false;
+    }
+}
+
+// Event listener para cambio de socio en el modal
+document.getElementById('modal-socio').addEventListener('change', async function() {
+    const socioId = this.value;
+    if (socioId) {
+        try {
+            const response = await Utils.ajax(`/api/socios/${socioId}`);
+            document.getElementById('saldo-actual-info').textContent =
+                `Saldo actual del socio: ${Utils.formatCurrency(response.capital_actual)}`;
+            document.getElementById('info-saldo').style.display = 'block';
+        } catch (error) {
+            console.error('Error cargando información del socio:', error);
+        }
+    } else {
+        document.getElementById('info-saldo').style.display = 'none';
+    }
+});
+
+// Event Listeners
+document.getElementById('form-filtros').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const filtros = {
+        socio_id: document.getElementById('filtro-socio').value,
+        tipo: document.getElementById('filtro-tipo').value,
+        fecha_desde: document.getElementById('filtro-fecha-desde').value,
+        fecha_hasta: document.getElementById('filtro-fecha-hasta').value
+    };
+
+    // Limpiar filtros vacíos
+    Object.keys(filtros).forEach(key => {
+        if (!filtros[key]) delete filtros[key];
+    });
+
+    currentFilters = filtros;
+    cargarPagos(filtros);
+});
+
+// Inicializar
+document.addEventListener('DOMContentLoaded', async function() {
+    await cargarSocios();
+    await cargarPagos();
+});
+</script>
+{% endblock %}

@@ -154,7 +154,8 @@ async def reporte_clientes_morosos(
         if cuotas_pendientes > 0:
             monto_mora = (prestamo.valor_cuota * cuotas_pendientes)
         else:
-            monto_mora = Decimal('0')
+            # Si no hay cuotas pendientes pero está en mora, usar saldo pendiente
+            monto_mora = prestamo.saldo_pendiente
 
         # Aplicar filtros
         if filtros.dias_mora_min and dias_mora < filtros.dias_mora_min:
@@ -223,17 +224,45 @@ async def estadisticas_generales(
         Prestamo.estado == "pagado"
     ).scalar()
 
-    # Estadísticas de morosos (simplificado)
-    # Para un cálculo más preciso necesitaríamos lógica más compleja
-    clientes_morosos = db.query(func.count(Prestamo.id)).filter(
-        Prestamo.estado == "activo",
-        Prestamo.saldo_pendiente > 0
-    ).scalar()
+    # Calcular clientes morosos dinámicamente (misma lógica que endpoint de morosos)
+    clientes_morosos = 0
+    monto_mora_total = 0
 
-    # Monto en mora aproximado (saldo pendiente de préstamos activos)
-    monto_mora_total = db.query(func.sum(Prestamo.saldo_pendiente)).filter(
-        Prestamo.estado == "activo"
-    ).scalar() or 0
+    # Subconsulta para obtener la última fecha de pago de cada préstamo activo
+    ultima_fecha_subquery = db.query(
+        Pago.prestamo_id,
+        func.max(Pago.fecha_pago).label('ultima_fecha_pago')
+    ).group_by(Pago.prestamo_id).subquery()
+
+    # Consulta de préstamos activos con su última fecha de pago
+    prestamos_activos_query = db.query(
+        Prestamo,
+        ultima_fecha_subquery.c.ultima_fecha_pago
+    ).join(
+        ultima_fecha_subquery,
+        Prestamo.id == ultima_fecha_subquery.c.prestamo_id,
+        isouter=True
+    ).filter(Prestamo.estado == "activo").all()
+
+    for prestamo, ultima_fecha_pago in prestamos_activos_query:
+        # Calcular días de mora y monto
+        if ultima_fecha_pago:
+            # Calcular próxima cuota (última fecha de pago + 1 mes)
+            proxima_cuota = ultima_fecha_pago.date() + timedelta(days=30)
+            if proxima_cuota < hoy:
+                clientes_morosos += 1
+                # Calcular monto en mora (cuotas pendientes aproximadas)
+                cuotas_pendientes = prestamo.numero_cuotas - prestamo.cuotas_pagadas
+                if cuotas_pendientes > 0:
+                    monto_mora_total += float((prestamo.valor_cuota * cuotas_pendientes))
+                else:
+                    monto_mora_total += float(prestamo.saldo_pendiente)
+        else:
+            # Si nunca ha pagado, calcular desde fecha de inicio + 30 días
+            fecha_vencimiento = prestamo.fecha_inicio.date() + timedelta(days=30)
+            if fecha_vencimiento < hoy:
+                clientes_morosos += 1
+                monto_mora_total += float(prestamo.saldo_pendiente)
 
     return ReporteEstadistico(
         total_pagos=pagos_total,
@@ -788,18 +817,54 @@ async def chart_prestamos_estado(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Datos para gráfica de distribución de préstamos por estado"""
-    prestamos_activos = db.query(func.count(Prestamo.id)).filter(
-        Prestamo.estado == "activo"
-    ).scalar()
+    hoy = date.today()
 
+    # Contar préstamos pagados
     prestamos_pagados = db.query(func.count(Prestamo.id)).filter(
         Prestamo.estado == "pagado"
     ).scalar()
 
+    # Calcular préstamos activos al día y en mora
+    prestamos_al_dia = 0
+    prestamos_en_mora = 0
+
+    # Subconsulta para obtener la última fecha de pago de cada préstamo activo
+    ultima_fecha_subquery = db.query(
+        Pago.prestamo_id,
+        func.max(Pago.fecha_pago).label('ultima_fecha_pago')
+    ).group_by(Pago.prestamo_id).subquery()
+
+    # Consulta de préstamos activos con su última fecha de pago
+    prestamos_activos_query = db.query(
+        Prestamo,
+        ultima_fecha_subquery.c.ultima_fecha_pago
+    ).join(
+        ultima_fecha_subquery,
+        Prestamo.id == ultima_fecha_subquery.c.prestamo_id,
+        isouter=True
+    ).filter(Prestamo.estado == "activo").all()
+
+    for prestamo, ultima_fecha_pago in prestamos_activos_query:
+        # Calcular si está en mora
+        if ultima_fecha_pago:
+            # Calcular próxima cuota (última fecha de pago + 1 mes)
+            proxima_cuota = ultima_fecha_pago.date() + timedelta(days=30)
+            if proxima_cuota < hoy:
+                prestamos_en_mora += 1
+            else:
+                prestamos_al_dia += 1
+        else:
+            # Si nunca ha pagado, calcular desde fecha de inicio + 30 días
+            fecha_vencimiento = prestamo.fecha_inicio.date() + timedelta(days=30)
+            if fecha_vencimiento < hoy:
+                prestamos_en_mora += 1
+            else:
+                prestamos_al_dia += 1
+
     return {
-        "labels": ["Activos", "Pagados"],
-        "data": [prestamos_activos, prestamos_pagados],
-        "colors": ["#007bff", "#28a745"]
+        "labels": ["Al Día", "En Mora", "Pagados"],
+        "data": [prestamos_al_dia, prestamos_en_mora, prestamos_pagados],
+        "colors": ["#28a745", "#dc3545", "#6c757d"]
     }
 
 @router.get("/charts/pagos-metodo")

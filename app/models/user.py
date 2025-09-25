@@ -39,8 +39,9 @@ class Usuario(Base):
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
-    # Relación con rol
+    # Relaciones
     rol = relationship("Rol", back_populates="usuarios")
+    pagos_socio = relationship("PagoSocio", back_populates="usuario", cascade="all, delete-orphan")
 
     @property
     def is_admin(self) -> bool:

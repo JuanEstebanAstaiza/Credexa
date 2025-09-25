@@ -366,6 +366,96 @@ async def configuracion_sistema(
         "user": current_user
     })
 
+# Rutas de Socios
+@app.get("/socios")
+async def socios_redirect(request: Request, current_user = Depends(get_current_user_optional)):
+    """Redireccionar a lista de socios"""
+    if not current_user:
+        return RedirectResponse(url="/login", status_code=302)
+    return RedirectResponse(url="/socios/lista", status_code=302)
+
+@app.get("/socios/lista", response_class=HTMLResponse)
+async def socios_lista(
+    request: Request,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Página de listado de socios"""
+    return templates.TemplateResponse("socios/lista.html", {
+        "request": request,
+        "title": "Lista de Socios",
+        "user": current_user
+    })
+
+@app.get("/socios/crear", response_class=HTMLResponse)
+async def socios_crear(
+    request: Request,
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Página de creación de socio"""
+    return templates.TemplateResponse("socios/crear.html", {
+        "request": request,
+        "title": "Nuevo Socio",
+        "user": current_user
+    })
+
+@app.get("/socios/{socio_id}/editar", response_class=HTMLResponse)
+async def socios_editar(
+    socio_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Página de edición de socio"""
+    from app.models.socio import Socio
+    socio = db.query(Socio).filter(Socio.id == socio_id).first()
+    if not socio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Socio no encontrado",
+        )
+
+    return templates.TemplateResponse("socios/editar.html", {
+        "request": request,
+        "title": f"Editar Socio: {socio.nombre_completo}",
+        "user": current_user,
+        "socio": socio
+    })
+
+@app.get("/socios/{socio_id}/detalle", response_class=HTMLResponse)
+async def socios_detalle(
+    socio_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Página de detalle de socio"""
+    from app.models.socio import Socio
+    socio = db.query(Socio).filter(Socio.id == socio_id).first()
+    if not socio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Socio no encontrado",
+        )
+
+    return templates.TemplateResponse("socios/detalle.html", {
+        "request": request,
+        "title": f"Socio: {socio.nombre_completo}",
+        "user": current_user,
+        "socio": socio
+    })
+
+@app.get("/socios/pagos", response_class=HTMLResponse)
+async def socios_pagos(
+    request: Request,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Página de pagos de socios"""
+    return templates.TemplateResponse("socios/pagos.html", {
+        "request": request,
+        "title": "Pagos de Socios",
+        "user": current_user
+    })
+
 # Ruta de Perfil de Usuario
 @app.get("/perfil", response_class=HTMLResponse)
 async def perfil_usuario(
