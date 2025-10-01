@@ -15,6 +15,8 @@ from app.core.security import get_current_user
 from app.models.user import Usuario
 from app.models.pago import Pago
 from app.models.prestamo import Prestamo
+from app.models.socio import Socio
+from app.models.pago_socio import PagoSocio
 from app.schemas.pago import (
     Pago as PagoSchema, PagoCreate, PagoUpdate,
     PagoFiltro, PagoPaginado, PagoRegistro
@@ -87,6 +89,38 @@ async def registrar_pago(
     if prestamo.saldo_pendiente <= 0:
         prestamo.estado = "pagado"
         prestamo.saldo_pendiente = 0
+
+    # Si el préstamo es de un socio, registrar el movimiento correspondiente
+    if prestamo.origen == "socio" and prestamo.socio_id:
+        socio = db.query(Socio).filter(Socio.id == prestamo.socio_id).first()
+        if socio:
+            # Calcular la participación del socio en este pago
+            # Para simplificar, asumimos que el socio aporta proporcionalmente
+            # En un sistema real, esto podría ser más complejo
+            porcentaje_socio = socio.porcentaje_participacion or 100.0  # Por defecto 100%
+
+            # El socio recibe su parte del capital pagado
+            monto_socio = (capital_pagado * porcentaje_socio / 100)
+
+            if monto_socio > 0:
+                saldo_anterior = socio.capital_actual
+                socio.capital_actual = float(socio.capital_actual) + float(monto_socio)
+                saldo_nuevo = socio.capital_actual
+
+                # Registrar como "devolucion" (capital devuelto)
+                pago_socio = PagoSocio(
+                    socio_id=prestamo.socio_id,
+                    tipo="devolucion",
+                    monto=monto_socio,
+                    fecha_pago=pago_data.fecha_pago or datetime.now(),
+                    descripcion=f"Cuota #{numero_cuota} del préstamo #{prestamo.id}",
+                    prestamo_id=prestamo.id,
+                    saldo_anterior=saldo_anterior,
+                    saldo_nuevo=saldo_nuevo,
+                    registrado_por=current_user.id
+                )
+                db.add(pago_socio)
+                db.add(socio)
 
     db.commit()
     db.refresh(db_pago)

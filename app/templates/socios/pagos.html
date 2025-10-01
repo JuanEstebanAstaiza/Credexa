@@ -468,10 +468,11 @@ function actualizarEstadisticas(pagos) {
     };
 
     pagos.forEach(pago => {
-        if (pago.tipo === 'aporte') stats.aportes += pago.monto;
-        else if (pago.tipo === 'prestamo') stats.prestamos += pago.monto;
-        else if (pago.tipo === 'devolucion') stats.devoluciones += pago.monto;
-        else if (pago.tipo === 'ganancia') stats.ganancias += pago.monto;
+        const monto = parseFloat(pago.monto) || 0;
+        if (pago.tipo === 'aporte') stats.aportes += monto;
+        else if (pago.tipo === 'prestamo') stats.prestamos += monto;
+        else if (pago.tipo === 'devolucion') stats.devoluciones += monto;
+        else if (pago.tipo === 'ganancia') stats.ganancias += monto;
     });
 
     document.getElementById('total-aportes').textContent = Utils.formatCurrency(stats.aportes);

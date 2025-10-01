@@ -49,6 +49,7 @@ class Prestamo(Base):
     socio = relationship("Socio", back_populates="prestamos")
     pagos = relationship("Pago", back_populates="prestamo", cascade="all, delete-orphan")
     pagos_socio = relationship("PagoSocio", back_populates="prestamo", cascade="all, delete-orphan")
+    carpeta = relationship("Carpeta", back_populates="prestamo")
 
     # Relación para refinanciaciones
     refinanciaciones = relationship("Prestamo", backref="prestamo_padre", remote_side=[id])

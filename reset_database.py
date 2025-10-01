@@ -473,6 +473,7 @@ def create_pagos(db, prestamos, admin_user):
 
                 # Actualizar saldo del préstamo
                 prestamo.saldo_pendiente = max(0, prestamo.saldo_pendiente - pago.monto_pagado)
+                prestamo.cuotas_pagadas += 1
 
                 cuota_numero += 1
 
@@ -512,6 +513,7 @@ def create_pagos(db, prestamos, admin_user):
 
                 # Actualizar saldo del préstamo
                 prestamo.saldo_pendiente = max(0, prestamo.saldo_pendiente - pago.monto_pagado)
+                prestamo.cuotas_pagadas += 1
 
                 cuota_numero += 1
 

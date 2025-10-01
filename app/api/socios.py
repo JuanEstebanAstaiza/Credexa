@@ -435,13 +435,13 @@ async def estadisticas_socio(
     return PagoSocioEstadistico(
         socio_id=socio_id,
         socio_nombre=socio.nombre_completo,
-        total_aportes=Decimal(str(total_aportes)),
-        total_prestamos=Decimal(str(total_prestamos)),
-        total_devoluciones=Decimal(str(total_devoluciones)),
-        total_ganancias=Decimal(str(total_ganancias)),
+        total_aportes=Decimal(str(float(total_aportes or 0))),
+        total_prestamos=Decimal(str(float(total_prestamos or 0))),
+        total_devoluciones=Decimal(str(float(total_devoluciones or 0))),
+        total_ganancias=Decimal(str(float(total_ganancias or 0))),
         saldo_actual=socio.capital_actual,
         pagos_mes_actual=pagos_mes,
-        monto_mes_actual=Decimal(str(monto_mes))
+        monto_mes_actual=Decimal(str(float(monto_mes or 0)))
     )
 
 

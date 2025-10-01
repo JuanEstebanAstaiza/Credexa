@@ -42,6 +42,8 @@ class Usuario(Base):
     # Relaciones
     rol = relationship("Rol", back_populates="usuarios")
     pagos_socio = relationship("PagoSocio", back_populates="usuario", cascade="all, delete-orphan")
+    documentos_subidos = relationship("Documento", back_populates="usuario_subio")
+    carpetas_creadas = relationship("Carpeta", back_populates="usuario_creador")
 
     @property
     def is_admin(self) -> bool:

@@ -516,6 +516,30 @@ async def backup_index(
         "user": current_user
     })
 
+# Rutas de Documentos
+@app.get("/documentos", response_class=HTMLResponse)
+async def documentos_index(
+    request: Request,
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Página principal de gestión de documentos"""
+    # Convertir usuario a diccionario serializable
+    user_dict = {
+        "id": current_user.id,
+        "nombre_completo": current_user.nombre_completo,
+        "username": current_user.username,
+        "email": current_user.email,
+        "is_admin": current_user.is_admin,
+        "is_digitador": current_user.is_digitador
+    }
+
+    return templates.TemplateResponse("documentos/index.html", {
+        "request": request,
+        "title": "Gestión de Documentos",
+        "user": user_dict,
+        "config": settings
+    })
+
 # Ruta de Perfil de Usuario
 @app.get("/perfil", response_class=HTMLResponse)
 async def perfil_usuario(

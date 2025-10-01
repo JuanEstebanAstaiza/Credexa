@@ -18,6 +18,8 @@ from app.models.cliente import Cliente
 from app.models.prestamo import Prestamo
 from app.models.pago import Pago
 from app.models.socio import Socio
+from app.models.pago_socio import PagoSocio
+from app.services.documentos_service import DocumentosService
 from app.schemas.prestamo import (
     Prestamo as PrestamoSchema, PrestamoCreate, PrestamoUpdate,
     PrestamoFiltro, PrestamoPaginado, EstadisticasPrestamo,
@@ -110,15 +112,43 @@ async def crear_prestamo(
 
     db.add(db_prestamo)
 
-    # Si es un préstamo de socio, reducir su capital disponible
+    # Si es un préstamo de socio, reducir su capital disponible y registrar el movimiento
     if db_prestamo.origen == "socio" and db_prestamo.socio_id:
         socio = db.query(Socio).filter(Socio.id == db_prestamo.socio_id).first()
         if socio:
+            # Registrar el préstamo como movimiento de socio
+            saldo_anterior = socio.capital_actual
             socio.capital_actual = float(socio.capital_actual) - float(db_prestamo.monto)
+            saldo_nuevo = socio.capital_actual
+
+            pago_socio = PagoSocio(
+                socio_id=db_prestamo.socio_id,
+                tipo="prestamo",
+                monto=db_prestamo.monto,
+                fecha_pago=db_prestamo.fecha_inicio,
+                descripcion=f"Préstamo #{db_prestamo.id} al cliente",
+                prestamo_id=db_prestamo.id,
+                saldo_anterior=saldo_anterior,
+                saldo_nuevo=saldo_nuevo,
+                registrado_por=current_user.id
+            )
+            db.add(pago_socio)
             db.add(socio)
 
     db.commit()
     db.refresh(db_prestamo)
+
+    # Crear carpeta automática para el préstamo
+    try:
+        carpeta_prestamo = DocumentosService.crear_carpeta_prestamo(
+            db, db_prestamo.id, db_prestamo.cliente_id
+        )
+        if carpeta_prestamo:
+            db_prestamo.carpeta_id = carpeta_prestamo.id
+            db.commit()
+    except Exception as e:
+        # Log del error pero no fallar la creación del préstamo
+        print(f"Error creando carpeta para préstamo {db_prestamo.id}: {e}")
 
     return PrestamoSchema.from_orm_with_calculations(db_prestamo)
 

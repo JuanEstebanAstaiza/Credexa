@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Documentos - {{ config.APP_NAME }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .folder-icon { color: #f39c12; }
+        .file-icon { color: #3498db; }
+        .breadcrumb-item + .breadcrumb-item::before { content: "/"; }
+        .document-card:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.1); }
+    </style>
+</head>
+<body>
+    {% include 'base.html' %}
+
+    <div class="container-fluid mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <div>
+                        <h2><i class="fas fa-folder-open me-2"></i>Gestión de Documentos</h2>
+                        <nav aria-label="breadcrumb">
+                            <ol class="breadcrumb" id="breadcrumb-nav">
+                                <li class="breadcrumb-item active" aria-current="page">
+                                    <i class="fas fa-home me-1"></i>Raíz
+                                </li>
+                            </ol>
+                        </nav>
+                    </div>
+                    <div>
+                        {% if user.is_admin %}
+                        <button class="btn btn-primary me-2" data-bs-toggle="modal" data-bs-target="#crearCarpetaModal">
+                            <i class="fas fa-plus me-1"></i>Nueva Carpeta
+                        </button>
+                        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#subirDocumentoModal">
+                            <i class="fas fa-upload me-1"></i>Subir Documento
+                        </button>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Barra de herramientas para administradores -->
+        {% if user.is_admin %}
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-cogs me-2"></i>Herramientas de Administración</h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-primary btn-sm w-100" onclick="crearCarpetasMes()">
+                                    <i class="fas fa-calendar-plus me-1"></i>Crear Carpetas del Mes
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-info btn-sm w-100" onclick="verificarEstructura()">
+                                    <i class="fas fa-check-circle me-1"></i>Verificar Estructura
+                                </button>
+                            </div>
+                            <div class="col-md-4">
+                                <button class="btn btn-outline-warning btn-sm w-100" onclick="limpiarCarpetasVacias()">
+                                    <i class="fas fa-broom me-1"></i>Limpiar Carpetas Vacías
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Vista de carpetas y archivos -->
+        <div class="row">
+            <!-- Panel lateral de navegación -->
+            <div class="col-md-3">
+                <div class="card">
+                    <div class="card-header">
+                        <h6 class="mb-0"><i class="fas fa-sitemap me-2"></i>Estructura</h6>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="tree-container" class="p-2">
+                            <!-- El árbol de carpetas se cargará aquí -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Contenido principal -->
+            <div class="col-md-9">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0" id="current-folder-title">
+                            <i class="fas fa-folder me-2"></i>Contenido de la carpeta actual
+                        </h6>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-secondary" onclick="cambiarVista('grid')" id="btn-grid">
+                                <i class="fas fa-th"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="cambiarVista('list')" id="btn-list">
+                                <i class="fas fa-list"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="loading-spinner" class="text-center py-4" style="display: none;">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+
+                        <div id="content-grid" class="row">
+                            <!-- Las carpetas y documentos se cargarán aquí -->
+                        </div>
+
+                        <div id="content-list" style="display: none;">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Tipo</th>
+                                        <th>Tamaño</th>
+                                        <th>Modificado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="content-list-body">
+                                    <!-- Los elementos se cargarán aquí -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crear Carpeta -->
+    <div class="modal fade" id="crearCarpetaModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Crear Nueva Carpeta</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="crearCarpetaForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="carpetaNombre" class="form-label">Nombre de la Carpeta</label>
+                            <input type="text" class="form-control" id="carpetaNombre" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="carpetaTipo" class="form-label">Tipo de Carpeta</label>
+                            <select class="form-select" id="carpetaTipo">
+                                <option value="manual">Manual</option>
+                                <option value="cliente">Cliente</option>
+                                <option value="socio">Socio</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="carpetaDescripcion" class="form-label">Descripción (opcional)</label>
+                            <textarea class="form-control" id="carpetaDescripcion" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Crear Carpeta</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Subir Documento -->
+    <div class="modal fade" id="subirDocumentoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Subir Documento</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="subirDocumentoForm" enctype="multipart/form-data">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="documentoArchivo" class="form-label">Seleccionar Archivo</label>
+                            <input type="file" class="form-control" id="documentoArchivo" required>
+                            <div class="form-text">Tamaño máximo: 10MB</div>
+                        </div>
+                        <div class="mb-3">
+                            <label for="documentoTipo" class="form-label">Tipo de Documento</label>
+                            <select class="form-select" id="documentoTipo">
+                                <option value="">Seleccionar tipo...</option>
+                                <option value="comprobante_pago">Comprobante de Pago</option>
+                                <option value="contrato">Contrato</option>
+                                <option value="recibo">Recibo</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="documentoDescripcion" class="form-label">Descripción (opcional)</label>
+                            <textarea class="form-control" id="documentoDescripcion" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Subir Documento</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentFolderId = null;
+        let currentView = 'grid';
+        let carpetaActual = null;
+
+        // Variables globales para el usuario
+        const user = {{ user|tojson }};
+
+        // Inicializar cuando se carga la página
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarArbolCarpetas();
+            cargarContenidoCarpeta(null);
+
+            // Configurar formularios
+            configurarFormularioCarpeta();
+            configurarFormularioDocumento();
+        });
+
+        // ===== FUNCIONES PRINCIPALES =====
+
+        async function cargarArbolCarpetas() {
+            try {
+                const response = await fetch('/api/documentos/carpetas/arbol');
+                const data = await response.json();
+
+                const container = document.getElementById('tree-container');
+                container.innerHTML = renderizarArbol(data);
+            } catch (error) {
+                console.error('Error cargando árbol:', error);
+            }
+        }
+
+        async function cargarContenidoCarpeta(carpetaId) {
+            mostrarLoading(true);
+            currentFolderId = carpetaId;
+
+            try {
+                let url = '/api/documentos/carpetas';
+                if (carpetaId) {
+                    url += `?parent_id=${carpetaId}`;
+                }
+
+                const [carpetasResponse, documentosResponse] = await Promise.all([
+                    fetch(url),
+                    fetch(`/api/documentos/documentos${carpetaId ? `?carpeta_id=${carpetaId}` : ''}`)
+                ]);
+
+                const carpetas = await carpetasResponse.json();
+                const documentos = await documentosResponse.json();
+
+                // Actualizar breadcrumb
+                actualizarBreadcrumb(carpetaId);
+
+                // Actualizar título
+                const titulo = document.getElementById('current-folder-title');
+                if (carpetaId) {
+                    const carpetaActual = carpetas.find(c => c.id === carpetaId);
+                    titulo.innerHTML = `<i class="fas fa-folder me-2"></i>${carpetaActual ? carpetaActual.nombre : 'Carpeta'}`;
+                } else {
+                    titulo.innerHTML = '<i class="fas fa-home me-2"></i>Raíz';
+                }
+
+                // Renderizar contenido
+                renderizarContenido(carpetas, documentos);
+
+            } catch (error) {
+                console.error('Error cargando contenido:', error);
+            } finally {
+                mostrarLoading(false);
+            }
+        }
+
+        // ===== RENDERIZADO =====
+
+        function renderizarArbol(nodo) {
+            if (!nodo.subcarpetas || nodo.subcarpetas.length === 0) {
+                return '';
+            }
+
+            let html = '<ul class="list-unstyled">';
+            for (const carpeta of nodo.subcarpetas) {
+                const iconClass = getIconClass(carpeta.tipo);
+                const onclick = `cargarContenidoCarpeta(${carpeta.id})`;
+                const badge = carpeta.documentos_count > 0 ? `<span class="badge bg-secondary ms-1">${carpeta.documentos_count}</span>` : '';
+
+                html += `
+                    <li>
+                        <div class="d-flex align-items-center py-1 px-2 hover-bg-light cursor-pointer" onclick="${onclick}">
+                            <i class="fas ${iconClass} me-2"></i>
+                            <span class="flex-grow-1">${carpeta.nombre}</span>
+                            ${badge}
+                        </div>
+                        ${renderizarArbol(carpeta)}
+                    </li>
+                `;
+            }
+            html += '</ul>';
+
+            return html;
+        }
+
+        function renderizarContenido(carpetas, documentos) {
+            const gridContainer = document.getElementById('content-grid');
+            const listContainer = document.getElementById('content-list-body');
+
+            // Limpiar contenedores
+            gridContainer.innerHTML = '';
+            listContainer.innerHTML = '';
+
+            // Renderizar carpetas
+            carpetas.forEach(carpeta => {
+                renderizarElementoGrid(carpeta, 'carpeta');
+                renderizarElementoLista(carpeta, 'carpeta');
+            });
+
+            // Renderizar documentos
+            documentos.forEach(documento => {
+                renderizarElementoGrid(documento, 'documento');
+                renderizarElementoLista(documento, 'documento');
+            });
+
+            // Mostrar mensaje si no hay contenido
+            if (carpetas.length === 0 && documentos.length === 0) {
+                const emptyMessage = `
+                    <div class="col-12 text-center py-5">
+                        <i class="fas fa-folder-open fa-3x text-muted mb-3"></i>
+                        <h5 class="text-muted">Esta carpeta está vacía</h5>
+                        <p class="text-muted">Sube documentos o crea carpetas para organizar tus archivos.</p>
+                    </div>
+                `;
+                gridContainer.innerHTML = emptyMessage;
+                listContainer.innerHTML = '<tr><td colspan="5" class="text-center py-5"><i class="fas fa-folder-open fa-3x text-muted mb-3 d-block"></i><h5 class="text-muted">Esta carpeta está vacía</h5></td></tr>';
+            }
+        }
+
+        function renderizarElementoGrid(elemento, tipo) {
+            const container = document.getElementById('content-grid');
+            const iconClass = getIconClass(tipo === 'carpeta' ? elemento.tipo : 'documento');
+            const size = tipo === 'documento' ? elemento.tamano_human : '';
+            const onclick = tipo === 'carpeta' ?
+                `cargarContenidoCarpeta(${elemento.id})` :
+                `descargarDocumento(${elemento.id}, '${elemento.nombre_original}')`;
+
+            const actions = tipo === 'carpeta' ? getAccionesCarpeta(elemento) : getAccionesDocumento(elemento);
+
+            const card = `
+                <div class="col-md-3 col-sm-6 mb-3">
+                    <div class="card document-card h-100 cursor-pointer" onclick="${onclick}">
+                        <div class="card-body text-center">
+                            <i class="fas ${iconClass} fa-3x mb-3"></i>
+                            <h6 class="card-title text-truncate" title="${elemento.nombre || elemento.nombre_original}">
+                                ${elemento.nombre || elemento.nombre_original}
+                            </h6>
+                            ${size ? `<small class="text-muted">${size}</small>` : ''}
+                            <div class="mt-2">
+                                ${actions}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            container.insertAdjacentHTML('beforeend', card);
+        }
+
+        function renderizarElementoLista(elemento, tipo) {
+            const container = document.getElementById('content-list-body');
+            const iconClass = getIconClass(tipo === 'carpeta' ? elemento.tipo : 'documento');
+            const size = tipo === 'documento' ? elemento.tamano_human : '-';
+            const date = tipo === 'carpeta' ? elemento.creado_en : elemento.fecha_subida;
+            const formattedDate = date ? new Date(date).toLocaleDateString() : '-';
+            const actions = tipo === 'carpeta' ? getAccionesCarpeta(elemento) : getAccionesDocumento(elemento);
+
+            const row = `
+                <tr onclick="${tipo === 'carpeta' ? `cargarContenidoCarpeta(${elemento.id})` : `descargarDocumento(${elemento.id}, '${elemento.nombre_original}')`}" class="cursor-pointer">
+                    <td><i class="fas ${iconClass} me-2"></i>${elemento.nombre || elemento.nombre_original}</td>
+                    <td><span class="badge bg-secondary">${tipo === 'carpeta' ? elemento.tipo : 'documento'}</span></td>
+                    <td>${size}</td>
+                    <td>${formattedDate}</td>
+                    <td>${actions}</td>
+                </tr>
+            `;
+
+            container.insertAdjacentHTML('beforeend', row);
+        }
+
+        // ===== UTILIDADES =====
+
+        function getIconClass(tipo) {
+            switch (tipo) {
+                case 'mes': return 'fa-calendar';
+                case 'cliente': return 'fa-user';
+                case 'socio': return 'fa-handshake';
+                case 'prestamo': return 'fa-file-contract';
+                case 'manual': return 'fa-folder';
+                case 'documento': return 'fa-file';
+                default: return 'fa-folder';
+            }
+        }
+
+        function getAccionesCarpeta(carpeta) {
+            if (!user.is_admin && carpeta.es_automatica) {
+                return '';
+            }
+
+            let actions = '';
+            if (user.is_admin) {
+                actions += `<button class="btn btn-sm btn-outline-danger me-1" onclick="event.stopPropagation(); eliminarCarpeta(${carpeta.id}, '${carpeta.nombre}')"><i class="fas fa-trash"></i></button>`;
+            }
+            return actions;
+        }
+
+        function getAccionesDocumento(documento) {
+            let actions = `<button class="btn btn-sm btn-outline-primary me-1" onclick="event.stopPropagation(); descargarDocumento(${documento.id}, '${documento.nombre_original}')"><i class="fas fa-download"></i></button>`;
+
+            if (user.is_admin || documento.usuario_subio_id === user.id) {
+                actions += `<button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); eliminarDocumento(${documento.id}, '${documento.nombre_original}')"><i class="fas fa-trash"></i></button>`;
+            }
+
+            return actions;
+        }
+
+        function actualizarBreadcrumb(carpetaId) {
+            const breadcrumb = document.getElementById('breadcrumb-nav');
+            // Esta función se implementaría para mostrar la ruta completa
+            // Por simplicidad, solo mostramos "Raíz" por ahora
+        }
+
+        function cambiarVista(vista) {
+            currentView = vista;
+            const gridBtn = document.getElementById('btn-grid');
+            const listBtn = document.getElementById('btn-list');
+            const gridContent = document.getElementById('content-grid');
+            const listContent = document.getElementById('content-list');
+
+            if (vista === 'grid') {
+                gridBtn.classList.add('active');
+                listBtn.classList.remove('active');
+                gridContent.style.display = 'flex';
+                listContent.style.display = 'none';
+            } else {
+                listBtn.classList.add('active');
+                gridBtn.classList.remove('active');
+                listContent.style.display = 'block';
+                gridContent.style.display = 'none';
+            }
+        }
+
+        function mostrarLoading(show) {
+            document.getElementById('loading-spinner').style.display = show ? 'block' : 'none';
+        }
+
+        // ===== UTILIDADES =====
+
+        function cerrarModalCompletamente(modalId) {
+            // Cerrar modal usando Bootstrap
+            const modal = bootstrap.Modal.getInstance(document.getElementById(modalId));
+            if (modal) {
+                modal.hide();
+            }
+
+            // Limpiar cualquier backdrop residual que pueda quedar
+            document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                backdrop.remove();
+            });
+
+            // Remover clases del body que Bootstrap agrega
+            document.body.classList.remove('modal-open');
+            document.body.style.overflow = '';
+            document.body.style.paddingRight = '';
+
+            // Pequeño delay para asegurar que todo se limpie
+            setTimeout(() => {
+                document.querySelectorAll('.modal-backdrop').forEach(backdrop => {
+                    if (backdrop.parentNode) {
+                        backdrop.parentNode.removeChild(backdrop);
+                    }
+                });
+            }, 100);
+        }
+
+        // ===== FORMULARIOS =====
+
+        function configurarFormularioCarpeta() {
+            const form = document.getElementById('crearCarpetaForm');
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const nombre = document.getElementById('carpetaNombre').value;
+                const tipo = document.getElementById('carpetaTipo').value;
+                const descripcion = document.getElementById('carpetaDescripcion').value;
+
+                try {
+                    const response = await fetch('/api/documentos/carpetas', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            nombre: nombre,
+                            tipo: tipo,
+                            parent_id: currentFolderId,
+                            descripcion: descripcion
+                        })
+                    });
+
+                    if (response.ok) {
+                        cerrarModalCompletamente('crearCarpetaModal');
+                        form.reset();
+                        cargarContenidoCarpeta(currentFolderId);
+                        cargarArbolCarpetas();
+                        mostrarMensaje('Carpeta creada exitosamente', 'success');
+                    } else {
+                        const error = await response.json();
+                        mostrarMensaje(error.detail || 'Error al crear la carpeta', 'danger');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    cerrarModalCompletamente('crearCarpetaModal');
+                    mostrarMensaje('Error al crear la carpeta', 'danger');
+                }
+            });
+        }
+
+        function configurarFormularioDocumento() {
+            const form = document.getElementById('subirDocumentoForm');
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+
+                const archivo = document.getElementById('documentoArchivo').files[0];
+                const tipo = document.getElementById('documentoTipo').value;
+                const descripcion = document.getElementById('documentoDescripcion').value;
+
+                if (!archivo) {
+                    mostrarMensaje('Por favor selecciona un archivo', 'warning');
+                    return;
+                }
+
+                const formData = new FormData();
+                formData.append('archivo', archivo);
+                formData.append('carpeta_id', currentFolderId || '');
+                if (tipo) formData.append('tipo_documento', tipo);
+                if (descripcion) formData.append('descripcion', descripcion);
+
+                try {
+                    const response = await fetch('/api/documentos/documentos', {
+                        method: 'POST',
+                        body: formData
+                    });
+
+                    if (response.ok) {
+                        cerrarModalCompletamente('subirDocumentoModal');
+                        form.reset();
+                        cargarContenidoCarpeta(currentFolderId);
+                        mostrarMensaje('Documento subido exitosamente', 'success');
+                    } else {
+                        const error = await response.json();
+                        mostrarMensaje(error.detail || 'Error al subir el documento', 'danger');
+                    }
+                } catch (error) {
+                    console.error('Error:', error);
+                    cerrarModalCompletamente('subirDocumentoModal');
+                    mostrarMensaje('Error al subir el documento', 'danger');
+                }
+            });
+        }
+
+        // ===== ACCIONES =====
+
+        async function descargarDocumento(documentoId, nombreArchivo) {
+            try {
+                const response = await fetch(`/api/documentos/documentos/${documentoId}/descargar`);
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = nombreArchivo;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                } else {
+                    mostrarMensaje('Error al descargar el documento', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error al descargar el documento', 'danger');
+            }
+        }
+
+        async function eliminarCarpeta(carpetaId, nombre) {
+            if (!confirm(`¿Estás seguro de que quieres eliminar la carpeta "${nombre}" y todo su contenido?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/documentos/carpetas/${carpetaId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    cargarContenidoCarpeta(currentFolderId);
+                    cargarArbolCarpetas();
+                    mostrarMensaje('Carpeta eliminada exitosamente', 'success');
+                } else {
+                    const error = await response.json();
+                    mostrarMensaje(error.detail || 'Error al eliminar la carpeta', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error al eliminar la carpeta', 'danger');
+            }
+        }
+
+        async function eliminarDocumento(documentoId, nombre) {
+            if (!confirm(`¿Estás seguro de que quieres eliminar el documento "${nombre}"?`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/documentos/documentos/${documentoId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    cargarContenidoCarpeta(currentFolderId);
+                    mostrarMensaje('Documento eliminado exitosamente', 'success');
+                } else {
+                    const error = await response.json();
+                    mostrarMensaje(error.detail || 'Error al eliminar el documento', 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error al eliminar el documento', 'danger');
+            }
+        }
+
+        // ===== HERRAMIENTAS DE ADMINISTRACIÓN =====
+
+        async function crearCarpetasMes() {
+            if (!confirm('¿Crear automáticamente las carpetas para el mes actual?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/documentos/automatizacion/crear-carpetas-mes', {
+                    method: 'POST'
+                });
+
+                const resultado = await response.json();
+                if (resultado.exito) {
+                    cargarArbolCarpetas();
+                    mostrarMensaje(`Carpetas creadas: ${resultado.carpetas_creadas.length}`, 'success');
+                } else {
+                    mostrarMensaje('Error al crear carpetas: ' + resultado.errores.join(', '), 'danger');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error al crear carpetas del mes', 'danger');
+            }
+        }
+
+        async function verificarEstructura() {
+            try {
+                const response = await fetch('/api/documentos/automatizacion/verificar-estructura', {
+                    method: 'POST'
+                });
+
+                const resultado = await response.json();
+                mostrarMensaje(`Verificación completada. Carpetas: ${resultado.carpetas_verificadas}, Directorios creados: ${resultado.directorios_creados}`, 'info');
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error al verificar estructura', 'danger');
+            }
+        }
+
+        async function limpiarCarpetasVacias() {
+            if (!confirm('¿Eliminar carpetas manuales vacías?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/documentos/automatizacion/limpiar-carpetas-vacias', {
+                    method: 'POST'
+                });
+
+                const resultado = await response.json();
+                mostrarMensaje(`Carpetas eliminadas: ${resultado.carpetas_eliminadas.length}`, 'success');
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarMensaje('Error al limpiar carpetas vacías', 'danger');
+            }
+        }
+
+        // ===== UTILIDADES =====
+
+        function mostrarMensaje(mensaje, tipo) {
+            // Crear toast de Bootstrap
+            const toastHtml = `
+                <div class="toast align-items-center text-white bg-${tipo} border-0" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">${mensaje}</div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+
+            const container = document.createElement('div');
+            container.innerHTML = toastHtml;
+            document.body.appendChild(container);
+
+            const toast = new bootstrap.Toast(container.querySelector('.toast'));
+            toast.show();
+
+            // Limpiar después de mostrar
+            setTimeout(() => {
+                document.body.removeChild(container);
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

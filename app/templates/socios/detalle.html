@@ -256,8 +256,15 @@ async function cargarDetalleSocio() {
         // Cargar estadísticas de pagos
         const statsResponse = await Utils.ajax(`/api/socios/${socio.id}/estadisticas`);
         document.getElementById('pagos-mes').textContent = statsResponse.pagos_mes_actual;
-        document.getElementById('total-pagos').textContent = statsResponse.total_aportes + statsResponse.total_prestamos +
-                                                          statsResponse.total_devoluciones + statsResponse.total_ganancias;
+
+        // Convertir a números y sumar correctamente
+        const totalAportes = parseFloat(statsResponse.total_aportes) || 0;
+        const totalPrestamos = parseFloat(statsResponse.total_prestamos) || 0;
+        const totalDevoluciones = parseFloat(statsResponse.total_devoluciones) || 0;
+        const totalGanancias = parseFloat(statsResponse.total_ganancias) || 0;
+        const totalPagos = totalAportes + totalPrestamos + totalDevoluciones + totalGanancias;
+
+        document.getElementById('total-pagos').textContent = Utils.formatCurrency(totalPagos);
 
         // Mostrar pagos recientes
         mostrarPagosRecientes(response.pagos_recientes);

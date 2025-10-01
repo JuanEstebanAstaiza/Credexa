@@ -42,14 +42,24 @@ class ClienteBase(BaseModel):
     def validar_telefono(cls, v):
         """Validar formato de teléfono colombiano"""
         if v:
-            # Remover espacios, guiones y paréntesis
+            # Remover espacios, guiones y paréntesis, pero mantener el +
             telefono_limpio = re.sub(r'[()\s\-]', '', v)
 
-            if not telefono_limpio.isdigit():
-                raise ValueError('El teléfono debe contener solo números')
+            # Verificar si tiene prefijo internacional +57
+            if telefono_limpio.startswith('+57'):
+                # Para formato internacional: +57 seguido de 10 dígitos
+                numero_sin_prefijo = telefono_limpio[3:]  # Remover +57
+                if not numero_sin_prefijo.isdigit():
+                    raise ValueError('El teléfono debe contener solo números después del prefijo +57')
+                if len(numero_sin_prefijo) != 10:
+                    raise ValueError('El teléfono con prefijo +57 debe tener exactamente 10 dígitos')
+            else:
+                # Para formato local: solo números
+                if not telefono_limpio.isdigit():
+                    raise ValueError('El teléfono debe contener solo números')
 
-            if len(telefono_limpio) < 7 or len(telefono_limpio) > 10:
-                raise ValueError('El teléfono debe tener entre 7 y 10 dígitos')
+                if len(telefono_limpio) < 7 or len(telefono_limpio) > 10:
+                    raise ValueError('El teléfono debe tener entre 7 y 10 dígitos')
 
         return v
 
