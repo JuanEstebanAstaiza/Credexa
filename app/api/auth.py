@@ -4,7 +4,8 @@ Endpoints de autenticación
 
 from datetime import timedelta
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Response, Form
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Form, Query
+from fastapi.security import HTTPAuthorizationCredentials
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -13,8 +14,9 @@ from sqlalchemy.sql import func
 from app.core.database import get_db
 from app.core.security import (
     verify_password, get_password_hash, create_access_token,
-    get_current_user, get_current_admin_user
+    get_current_user, get_current_admin_user, get_current_user_optional, security
 )
+from jose import JWTError, jwt
 from app.core.config import settings
 from app.models.user import Usuario, Rol
 from app.schemas.user import (
@@ -328,3 +330,326 @@ async def reset_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Token inválido",
         )
+
+# ====================
+# RECUPERACIÓN DE CONTRASEÑA
+# ====================
+import secrets
+
+@router.post("/auth/solicitar-cambio-password")
+async def solicitar_cambio_password(
+    motivo: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Solicitar cambio de contraseña (para digitadores)"""
+    from app.models.solicitud_password import SolicitudPassword
+
+    # Solo usuarios no administradores pueden solicitar cambio
+    if current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Los administradores deben cambiar su contraseña directamente",
+        )
+
+    # Verificar si ya tiene una solicitud pendiente
+    solicitud_pendiente = db.query(SolicitudPassword).filter(
+        SolicitudPassword.usuario_id == current_user.id,
+        SolicitudPassword.estado == "pendiente"
+    ).first()
+
+    if solicitud_pendiente:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya tienes una solicitud de cambio de contraseña pendiente",
+        )
+
+    # Crear nueva solicitud
+    nueva_solicitud = SolicitudPassword(
+        usuario_id=current_user.id,
+        tipo_solicitud="usuario",
+        motivo=motivo,
+        token_verificacion=secrets.token_urlsafe(32)
+    )
+
+    db.add(nueva_solicitud)
+    db.commit()
+    db.refresh(nueva_solicitud)
+
+    return {"message": "Solicitud de cambio de contraseña enviada al administrador"}
+
+@router.get("/auth/solicitudes-password", response_model=dict)
+async def listar_solicitudes_password(
+    skip: int = 0,
+    limit: int = 10,
+    estado: Optional[str] = None,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Listar solicitudes de cambio de contraseña (solo admin)"""
+    from app.models.solicitud_password import SolicitudPassword
+
+    query = db.query(
+        SolicitudPassword,
+        Usuario.nombre_completo.label('usuario_nombre'),
+        Usuario.username.label('usuario_username'),
+        Usuario.rol.label('usuario_rol')
+    ).join(
+        Usuario, SolicitudPassword.usuario_id == Usuario.id
+    )
+
+    if estado:
+        query = query.filter(SolicitudPassword.estado == estado)
+
+    # Obtener total
+    total = query.count()
+
+    # Aplicar paginación y ordenar
+    solicitudes = query.order_by(
+        SolicitudPassword.fecha_solicitud.desc()
+    ).offset(skip).limit(limit).all()
+
+    # Formatear respuesta
+    items = []
+    for sol, nombre, username, rol in solicitudes:
+        item = {
+            "id": sol.id,
+            "usuario_id": sol.usuario_id,
+            "tipo_solicitud": sol.tipo_solicitud,
+            "estado": sol.estado,
+            "nueva_password": sol.nueva_password,
+            "motivo": sol.motivo,
+            "comentarios_admin": sol.comentarios_admin,
+            "token_verificacion": sol.token_verificacion,
+            "fecha_solicitud": sol.fecha_solicitud,
+            "fecha_respuesta": sol.fecha_respuesta,
+            "respondido_por": sol.respondido_por,
+            "usuario_nombre": nombre,
+            "usuario_username": username,
+            "usuario_rol": rol.nombre if rol else "Sin rol"
+        }
+
+        # Agregar info del admin si aplica
+        if sol.respondido_por:
+            admin = db.query(Usuario).filter(Usuario.id == sol.respondido_por).first()
+            if admin:
+                item["admin_nombre"] = admin.nombre_completo
+                item["admin_username"] = admin.username
+
+        items.append(item)
+
+    return {
+        "items": items,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+@router.put("/auth/solicitudes-password/{solicitud_id}")
+async def responder_solicitud_password(
+    solicitud_id: int,
+    respuesta: dict,
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Responder a una solicitud de cambio de contraseña (solo admin)"""
+    from app.models.solicitud_password import SolicitudPassword
+
+    solicitud = db.query(SolicitudPassword).filter(SolicitudPassword.id == solicitud_id).first()
+
+    if not solicitud:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Solicitud no encontrada",
+        )
+
+    if solicitud.estado != "pendiente":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Esta solicitud ya ha sido procesada",
+        )
+
+    # Actualizar solicitud
+    solicitud.estado = respuesta.estado or solicitud.estado
+    solicitud.comentarios_admin = respuesta.comentarios_admin or solicitud.comentarios_admin
+    solicitud.fecha_respuesta = func.now()
+    solicitud.respondido_por = current_user.id
+
+    # Si se aprueba, actualizar la contraseña del usuario
+    if solicitud.estado == "aprobada":
+        usuario = db.query(Usuario).filter(Usuario.id == solicitud.usuario_id).first()
+
+        if respuesta.nueva_password:
+            # Usar la contraseña proporcionada por el admin
+            usuario.hashed_password = get_password_hash(respuesta.nueva_password)
+            solicitud.nueva_password = respuesta.nueva_password  # Guardar para referencia
+        else:
+            # Generar una contraseña aleatoria
+            nueva_password = secrets.token_urlsafe(8)
+            usuario.hashed_password = get_password_hash(nueva_password)
+            solicitud.nueva_password = nueva_password
+
+        solicitud.estado = "completada"  # Marcar como completada inmediatamente
+
+    db.commit()
+
+    return {"message": f"Solicitud {'aprobada' if solicitud.estado == 'completada' else 'rechazada'} exitosamente"}
+
+@router.post("/auth/cambiar-password-admin")
+async def cambiar_password_admin(
+    usuario_id: int = Form(...),
+    nueva_password: str = Form(...),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Cambiar contraseña de un usuario directamente (solo admin)"""
+    usuario = db.query(Usuario).filter(Usuario.id == usuario_id).first()
+
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Usuario no encontrado",
+        )
+
+    # Actualizar contraseña
+    usuario.hashed_password = get_password_hash(nueva_password)
+    db.commit()
+
+    return {"message": f"Contraseña de {usuario.nombre_completo} actualizada exitosamente"}
+
+@router.post("/auth/cambiar-mi-password-admin")
+async def cambiar_mi_password_admin(
+    nueva_password: str = Form(...),
+    db: Session = Depends(get_db),
+    credentials: HTTPAuthorizationCredentials = Depends(security)
+):
+    """Cambiar contraseña del admin usando token temporal de verificación"""
+    try:
+        # Decodificar y verificar el token temporal
+        token = credentials.credentials
+        payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        user_id: str = payload.get("sub")
+        verified: bool = payload.get("verified", False)
+
+        if not user_id or not verified:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Token de verificación inválido",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        # Obtener el usuario
+        usuario = db.query(Usuario).filter(Usuario.id == int(user_id)).first()
+        if not usuario:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Usuario no encontrado"
+            )
+
+        # Verificar que sea administrador
+        if not usuario.is_admin:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No tienes permisos para realizar esta acción"
+            )
+
+        # Cambiar la contraseña
+        usuario.hashed_password = get_password_hash(nueva_password)
+        db.commit()
+
+        return {"message": f"Contraseña actualizada exitosamente. Ahora puedes iniciar sesión normalmente."}
+
+    except JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token de verificación inválido",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+@router.post("/auth/verificar-admin")
+async def verificar_admin(
+    data: dict,
+    db: Session = Depends(get_db),
+    current_user = Depends(get_current_user_optional)
+):
+    """Verificar que un usuario es administrador sin requerir contraseña"""
+    username = data.get('username', '').strip()
+    email = data.get('email', '').strip()
+
+    if not username or not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Usuario y email son requeridos",
+        )
+
+    # Buscar usuario que coincida con username y email
+    usuario = db.query(Usuario).join(Rol).filter(
+        Usuario.username == username,
+        Usuario.email == email,
+        Usuario.activo == True,
+        Rol.nombre == "admin"  # Solo admins
+    ).first()
+
+    if not usuario:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Credenciales de administrador inválidas",
+        )
+
+    # Generar un token temporal para este admin verificado
+    import secrets
+    from datetime import datetime, timedelta
+    from app.core.security import create_access_token
+
+    # Crear token con expiración corta (15 minutos)
+    token_data = {
+        "sub": str(usuario.id),
+        "username": usuario.username,
+        "role": "admin",
+        "verified": True,
+        "exp": datetime.utcnow() + timedelta(minutes=15)
+    }
+
+    access_token = create_access_token(token_data)
+
+    return {
+        "message": "Verificación exitosa",
+        "usuario": {
+            "id": usuario.id,
+            "nombre_completo": usuario.nombre_completo,
+            "username": usuario.username
+        },
+        "access_token": access_token,
+        "token_type": "bearer",
+        "expires_in": 900  # 15 minutos en segundos
+    }
+
+@router.get("/auth/usuarios")
+async def listar_usuarios(
+    skip: int = 0,
+    limit: int = Query(100, ge=1, le=1000),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Listar usuarios para selección (solo admin)"""
+    # Obtener usuarios con paginación
+    usuarios = db.query(Usuario).offset(skip).limit(limit).all()
+
+    # Formatear respuesta
+    result = []
+    for usuario in usuarios:
+        result.append({
+            "id": usuario.id,
+            "nombre_completo": usuario.nombre_completo,
+            "username": usuario.username,
+            "email": usuario.email,
+            "rol_id": usuario.rol_id,
+            "activo": usuario.activo
+        })
+
+    return {
+        "items": result,
+        "total": len(result),
+        "skip": skip,
+        "limit": limit
+    }

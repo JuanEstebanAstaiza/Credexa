@@ -990,3 +990,147 @@ async def chart_tipos_pago(
         "data": data,
         "colors": [colors.get(tipo, '#6c757d') for tipo, _, _ in resultados]
     }
+
+# Endpoint para actividad reciente del dashboard
+from pydantic import BaseModel
+from typing import Dict, Any, List
+
+class ActividadRecienteItem(BaseModel):
+    tipo: str  # 'pago', 'prestamo', 'mora'
+    titulo: str
+    descripcion: str
+    tiempo: str
+    timestamp: datetime
+
+@router.get("/actividad-reciente", response_model=List[Dict[str, Any]])
+async def actividad_reciente(
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Obtiene la actividad reciente del sistema (pagos, préstamos, clientes en mora)"""
+    from app.core.database import convertir_a_colombia
+    from datetime import datetime as dt
+
+    actividades = []
+
+    # 1. Obtener últimos pagos
+    pagos_recientes = db.query(
+        Pago,
+        Cliente.nombre_completo.label('cliente_nombre'),
+        Prestamo.monto.label('prestamo_monto')
+    ).join(
+        Prestamo, Pago.prestamo_id == Prestamo.id
+    ).join(
+        Cliente, Prestamo.cliente_id == Cliente.id
+    ).order_by(
+        Pago.creado_en.desc()
+    ).limit(limit).all()
+
+    for pago, cliente_nombre, prestamo_monto in pagos_recientes:
+        # Calcular tiempo transcurrido
+        ahora = dt.utcnow().replace(tzinfo=None)
+        tiempo_transcurrido = ahora - pago.creado_en.replace(tzinfo=None)
+
+        # Formatear tiempo
+        if tiempo_transcurrido.days > 0:
+            tiempo = f"Hace {tiempo_transcurrido.days} día{'s' if tiempo_transcurrido.days != 1 else ''}"
+        elif tiempo_transcurrido.seconds >= 3600:
+            horas = tiempo_transcurrido.seconds // 3600
+            tiempo = f"Hace {horas} hora{'s' if horas != 1 else ''}"
+        elif tiempo_transcurrido.seconds >= 60:
+            minutos = tiempo_transcurrido.seconds // 60
+            tiempo = f"Hace {minutos} min"
+        else:
+            tiempo = "Hace un momento"
+
+        actividades.append({
+            "tipo": "pago",
+            "titulo": "Pago registrado",
+            "descripcion": f"Se registró un pago de ${pago.monto_pagado:,.0f} para el cliente {cliente_nombre}",
+            "tiempo": tiempo,
+            "timestamp": pago.creado_en
+        })
+
+    # 2. Obtener últimos préstamos
+    prestamos_recientes = db.query(
+        Prestamo,
+        Cliente.nombre_completo.label('cliente_nombre')
+    ).join(
+        Cliente, Prestamo.cliente_id == Cliente.id
+    ).filter(
+        Prestamo.estado.in_(['activo', 'refinanciado'])
+    ).order_by(
+        Prestamo.creado_en.desc()
+    ).limit(limit).all()
+
+    for prestamo, cliente_nombre in prestamos_recientes:
+        # Calcular tiempo transcurrido
+        ahora = dt.utcnow().replace(tzinfo=None)
+        tiempo_transcurrido = ahora - prestamo.creado_en.replace(tzinfo=None)
+
+        # Formatear tiempo
+        if tiempo_transcurrido.days > 0:
+            tiempo = f"Hace {tiempo_transcurrido.days} día{'s' if tiempo_transcurrido.days != 1 else ''}"
+        elif tiempo_transcurrido.seconds >= 3600:
+            horas = tiempo_transcurrido.seconds // 3600
+            tiempo = f"Hace {horas} hora{'s' if horas != 1 else ''}"
+        elif tiempo_transcurrido.seconds >= 60:
+            minutos = tiempo_transcurrido.seconds // 60
+            tiempo = f"Hace {minutos} min"
+        else:
+            tiempo = "Hace un momento"
+
+        actividades.append({
+            "tipo": "prestamo",
+            "titulo": "Nuevo préstamo",
+            "descripcion": f"Se creó un préstamo de ${prestamo.monto:,.0f} para {cliente_nombre}",
+            "tiempo": tiempo,
+            "timestamp": prestamo.creado_en
+        })
+
+    # 3. Obtener clientes en mora (últimas verificaciones)
+    # Para simplificar, vamos a obtener clientes con préstamos que tienen saldo pendiente
+    # y cuya última cuota debería haber sido pagada hace más de 30 días
+    from sqlalchemy import text
+
+    # Clientes con préstamos activos y saldo pendiente
+    clientes_mora = db.query(
+        Cliente.nombre_completo,
+        Prestamo.monto,
+        Prestamo.saldo_pendiente,
+        Prestamo.fecha_inicio,
+        Prestamo.plazo_meses
+    ).join(
+        Prestamo, Cliente.id == Prestamo.cliente_id
+    ).filter(
+        Prestamo.estado.in_(['activo', 'refinanciado']),
+        Prestamo.saldo_pendiente > 0
+    ).order_by(
+        Prestamo.fecha_inicio.desc()
+    ).limit(limit).all()
+
+    for cliente_nombre, prestamo_monto, saldo_pendiente, fecha_inicio, plazo_meses in clientes_mora:
+        # Calcular tiempo transcurrido desde la creación del préstamo
+        ahora = dt.utcnow().replace(tzinfo=None)
+        tiempo_transcurrido = ahora - fecha_inicio.replace(tzinfo=None)
+
+        # Formatear tiempo
+        if tiempo_transcurrido.days > 30:  # Si tiene más de 30 días
+            tiempo = f"Hace {tiempo_transcurrido.days} día{'s' if tiempo_transcurrido.days != 1 else ''}"
+        else:
+            continue  # Solo mostrar si tiene más de 30 días
+
+        actividades.append({
+            "tipo": "mora",
+            "titulo": "Cliente en mora",
+            "descripcion": f"El cliente {cliente_nombre} tiene un saldo pendiente de ${saldo_pendiente:,.0f}",
+            "tiempo": tiempo,
+            "timestamp": fecha_inicio
+        })
+
+    # Ordenar todas las actividades por timestamp descendente y limitar
+    actividades.sort(key=lambda x: x['timestamp'], reverse=True)
+    actividades = actividades[:limit]
+
+    return actividades

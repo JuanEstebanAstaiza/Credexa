@@ -197,33 +197,60 @@ document.addEventListener('DOMContentLoaded', function() {
     // Función para cargar actividad reciente
     async function cargarActividadReciente() {
         try {
-            // Aquí se haría una llamada a la API para obtener actividad reciente
-            const actividadHtml = `
-                <div class="list-group list-group-flush">
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">Pago registrado</h6>
-                            <small class="text-muted">Hace 5 min</small>
-                        </div>
-                        <p class="mb-1">Se registró un pago de $500 para el cliente Juan Pérez</p>
-                    </div>
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">Nuevo préstamo</h6>
-                            <small class="text-muted">Hace 1 hora</small>
-                        </div>
-                        <p class="mb-1">Se creó un préstamo de $2,000 para María García</p>
-                    </div>
-                    <div class="list-group-item">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1">Cliente en mora</h6>
-                            <small class="text-muted">Hace 2 horas</small>
-                        </div>
-                        <p class="mb-1">El cliente Carlos López tiene una cuota pendiente</p>
-                    </div>
-                </div>
-            `;
+            const actividades = await Utils.ajax('/api/reportes/actividad-reciente?limit=10');
 
+            if (actividades.length === 0) {
+                document.getElementById('actividad-reciente').innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <i class="fas fa-inbox fa-2x mb-3"></i>
+                        <p>No hay actividad reciente</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let actividadHtml = '<div class="list-group list-group-flush">';
+
+            actividades.forEach(actividad => {
+                // Determinar el icono según el tipo
+                let iconClass = '';
+                let badgeClass = '';
+
+                switch (actividad.tipo) {
+                    case 'pago':
+                        iconClass = 'fas fa-credit-card text-success';
+                        badgeClass = 'badge bg-success';
+                        break;
+                    case 'prestamo':
+                        iconClass = 'fas fa-plus-circle text-primary';
+                        badgeClass = 'badge bg-primary';
+                        break;
+                    case 'mora':
+                        iconClass = 'fas fa-exclamation-triangle text-warning';
+                        badgeClass = 'badge bg-warning';
+                        break;
+                    default:
+                        iconClass = 'fas fa-info-circle text-info';
+                        badgeClass = 'badge bg-info';
+                }
+
+                actividadHtml += `
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between align-items-start">
+                            <div class="d-flex align-items-start">
+                                <i class="${iconClass} me-3 mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <h6 class="mb-1">${actividad.titulo}</h6>
+                                    <p class="mb-1">${actividad.descripcion}</p>
+                                </div>
+                            </div>
+                            <small class="text-muted ms-2">${actividad.tiempo}</small>
+                        </div>
+                    </div>
+                `;
+            });
+
+            actividadHtml += '</div>';
             document.getElementById('actividad-reciente').innerHTML = actividadHtml;
 
         } catch (error) {

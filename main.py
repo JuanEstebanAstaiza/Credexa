@@ -95,6 +95,84 @@ async def dashboard(request: Request, current_user = Depends(get_current_user_op
         "user": current_user
     })
 
+@app.get("/recuperar-password", response_class=HTMLResponse)
+async def recuperar_password(request: Request):
+    """Página principal de recuperación de contraseña - completamente pública"""
+    # Esta ruta es completamente pública, sin dependencias de autenticación
+    return templates.TemplateResponse("auth/recuperar_password.html", {
+        "request": request,
+        "title": "Recuperar Contraseña"
+    })
+
+@app.get("/recuperar-password-autenticado", response_class=HTMLResponse)
+async def recuperar_password_autenticado(request: Request, current_user = Depends(get_current_user_optional)):
+    """Página de recuperación para usuarios ya autenticados - redirige según rol"""
+    if current_user:
+        # Usuario autenticado - redirigir según rol
+        if current_user.is_admin:
+            # Los admins van directamente a cambiar contraseña
+            return RedirectResponse(url="/cambiar-password", status_code=302)
+        else:
+            # Los digitadores van a solicitar cambio
+            return RedirectResponse(url="/solicitar-password", status_code=302)
+    else:
+        # Si no está autenticado, redirigir a la versión pública
+        return RedirectResponse(url="/recuperar-password", status_code=302)
+
+@app.get("/solicitar-password", response_class=HTMLResponse)
+async def solicitar_password(request: Request, current_user = Depends(get_current_user)):
+    """Página para solicitar cambio de contraseña (digitadores)"""
+    return templates.TemplateResponse("auth/solicitar_password.html", {
+        "request": request,
+        "title": "Solicitar Cambio de Contraseña",
+        "user": current_user
+    })
+
+@app.get("/gestion-password", response_class=HTMLResponse)
+async def gestion_password(request: Request, current_user = Depends(get_current_admin_user)):
+    """Página para gestionar solicitudes de contraseña (admin)"""
+    return templates.TemplateResponse("auth/gestion_password.html", {
+        "request": request,
+        "title": "Gestión de Solicitudes de Contraseña",
+        "user": current_user
+    })
+
+@app.get("/cambiar-password", response_class=HTMLResponse)
+async def cambiar_password(request: Request, token: str = None, current_user = Depends(get_current_user_optional)):
+    """Página para cambiar contraseña directamente (admin)"""
+    # Verificar si hay un token temporal en la URL
+    if token:
+        # Verificar el token temporal
+        from app.core.security import verify_token
+        try:
+            payload = verify_token(token)
+            if payload.get("verified") and payload.get("role") == "admin":
+                # Token válido para admin verificado
+                from app.models.user import Usuario
+                from app.core.database import get_db
+                db = next(get_db())
+                usuario = db.query(Usuario).filter(Usuario.id == int(payload.get("sub"))).first()
+                if usuario and usuario.is_admin:
+                    return templates.TemplateResponse("auth/cambiar_password_admin.html", {
+                        "request": request,
+                        "title": "Cambiar Mi Contraseña",
+                        "user": usuario,
+                        "temp_token": token
+                    })
+        except:
+            pass  # Token inválido, continuar con la lógica normal
+
+    # Permitir acceso si el usuario está autenticado como admin
+    if current_user and current_user.is_admin:
+        return templates.TemplateResponse("auth/cambiar_password.html", {
+            "request": request,
+            "title": "Cambiar Contraseña de Usuario",
+            "user": current_user
+        })
+    else:
+        # No autorizado
+        return RedirectResponse(url="/recuperar-password", status_code=302)
+
 @app.get("/clientes")
 async def clientes_redirect(request: Request, current_user = Depends(get_current_user_optional)):
     """Redireccionar a lista de clientes"""

@@ -217,31 +217,39 @@ const Utils = {
             mergedOptions.headers['Content-Type'] = 'application/json';
         }
 
-        // Agregar token de autenticación si existe
-        const token = this.getCookie('access_token');
-        if (token) {
-            mergedOptions.headers['Authorization'] = `Bearer ${token}`;
+        // Agregar token de autenticación si existe y no hay header Authorization ya establecido
+        if (!mergedOptions.headers['Authorization']) {
+            const token = this.getCookie('access_token');
+            if (token) {
+                mergedOptions.headers['Authorization'] = `Bearer ${token}`;
+            }
         }
 
         try {
             const response = await fetch(url, mergedOptions);
 
+            // Leer el cuerpo de la respuesta solo una vez
+            const responseText = await response.text();
+            let responseData;
+
             if (!response.ok) {
-                let errorData;
+                // Intentar parsear como JSON para obtener el mensaje de error
                 try {
-                    errorData = await response.json();
+                    responseData = JSON.parse(responseText);
                 } catch {
-                    errorData = { detail: await response.text() || 'Error desconocido' };
+                    responseData = { detail: responseText || 'Error desconocido' };
                 }
-                throw new Error(errorData.detail || `Error ${response.status}`);
+                throw new Error(responseData.detail || `Error ${response.status}`);
             }
 
             // Intentar parsear como JSON, si falla devolver el texto
             try {
-                return await response.json();
+                responseData = JSON.parse(responseText);
             } catch {
-                return await response.text();
+                responseData = responseText;
             }
+
+            return responseData;
         } catch (error) {
             console.error('Error en petición AJAX:', error);
             throw error;
@@ -334,7 +342,14 @@ const App = {
      */
     init: function() {
         this.setupEventListeners();
-        this.loadUserData();
+
+        // Solo cargar datos del usuario si no estamos en páginas públicas
+        const publicPages = ['/login', '/recuperar-password', '/recuperar-password-autenticado', '/cambiar-password'];
+        const currentPath = window.location.pathname;
+
+        if (!publicPages.includes(currentPath)) {
+            this.loadUserData();
+        }
     },
 
     /**
