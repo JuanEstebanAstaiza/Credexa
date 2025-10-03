@@ -92,3 +92,19 @@ class PagoRegistro(BaseModel):
 
     # El cálculo automático se hará en el backend
     tipo_pago: Optional[str] = None  # Se determinará automáticamente
+
+class PagoRegistroConArchivos(BaseModel):
+    """Esquema para registrar pago con archivos opcionales de soporte"""
+    prestamo_id: int
+    monto_pagado: Decimal
+    fecha_pago: Optional[datetime] = None
+    metodo_pago: Optional[str] = None
+    referencia_pago: Optional[str] = None
+    observaciones: Optional[str] = None
+
+    # Archivos opcionales de soporte
+    archivos_soporte: Optional[List[str]] = None  # Lista de nombres de archivos para FormData
+    descripcion_archivos: Optional[str] = None
+
+    # El cálculo automático se hará en el backend
+    tipo_pago: Optional[str] = None  # Se determinará automáticamente

@@ -41,7 +41,7 @@
                             {% for socio_item in socios %}
                             <option value="{{ socio_item.id }}" {{ 'selected' if socio_item.id == socio.id else '' }}>
                                 {{ socio_item.nombre_completo }} - CC: {{ socio_item.cedula }}
-                                (Capital: ${{ socio_item.capital_actual|number_format(0, ',', '.') }})
+                                (Capital: ${{ "{:,.0f}".format(socio_item.capital_actual) }})
                             </option>
                             {% endfor %}
                         </select>
@@ -84,7 +84,7 @@
             <div class="card-body text-center">
                 <i class="fas fa-wallet fa-3x mb-3 opacity-75"></i>
                 <h4>Capital Actual</h4>
-                <h2 id="capital-actual">${{ socio.capital_actual|number_format(0, ',', '.') }}</h2>
+                <h2 id="capital-actual">${{ "{:,.0f}".format(socio.capital_actual) }}</h2>
                 <p class="mb-0">Disponible para retiro</p>
             </div>
         </div>

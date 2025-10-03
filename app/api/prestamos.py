@@ -276,16 +276,51 @@ async def eliminar_prestamo(
             detail="Préstamo no encontrado",
         )
 
-    # Verificar si tiene pagos
+    # Verificar si tiene pagos directos
     pagos_count = db.query(Pago).filter(Pago.prestamo_id == prestamo_id).count()
-    if pagos_count > 0:
+
+    # Si el préstamo está refinanciado y tiene saldo 0, permitir eliminación incluso con pagos
+    if pagos_count > 0 and not (prestamo.estado == "refinanciado" and prestamo.saldo_pendiente == 0):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No se puede eliminar un préstamo que tiene pagos registrados",
         )
 
-    db.delete(prestamo)
-    db.commit()
+    # Eliminar relaciones dependientes antes de eliminar el préstamo
+    try:
+        # 1. Eliminar carpetas asociadas al préstamo
+        from app.models.carpeta import Carpeta
+        from app.models.pago_socio import PagoSocio
+
+        carpetas_prestamo = db.query(Carpeta).filter(Carpeta.prestamo_id == prestamo_id).all()
+        for carpeta in carpetas_prestamo:
+            db.delete(carpeta)
+
+        # 2. Eliminar referencias en pagos_socio (poner prestamo_id a None)
+        pagos_socio_relacionados = db.query(PagoSocio).filter(PagoSocio.prestamo_id == prestamo_id).all()
+        for pago_socio in pagos_socio_relacionados:
+            pago_socio.prestamo_id = None
+            pago_socio.descripcion += f" (préstamo #{prestamo_id} eliminado)"
+
+        # 3. Si este préstamo tiene refinanciaciones, limpiar la referencia al padre
+        prestamos_hijos = db.query(Prestamo).filter(Prestamo.prestamo_padre_id == prestamo_id).all()
+        for prestamo_hijo in prestamos_hijos:
+            prestamo_hijo.prestamo_padre_id = None
+            prestamo_hijo.observaciones += f" (préstamo padre #{prestamo_id} eliminado)"
+
+        # Confirmar cambios antes de eliminar el préstamo
+        db.commit()
+
+        # Ahora eliminar el préstamo
+        db.delete(prestamo)
+        db.commit()
+
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error interno al eliminar préstamo: {str(e)}"
+        )
 
     return {"message": "Préstamo eliminado exitosamente"}
 
@@ -351,7 +386,7 @@ async def obtener_estadisticas_prestamos(
         promedio_tasa_interes=float(stats.promedio_tasa_interes or 0)
     )
 
-@router.post("/prestamos/{prestamo_id}/refinanciar")
+@router.post("/{prestamo_id}/refinanciar")
 async def refinanciar_prestamo(
     prestamo_id: int,
     refinanciacion_data: dict,

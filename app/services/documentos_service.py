@@ -97,6 +97,185 @@ class DocumentosService:
         return resultados
 
     @staticmethod
+    def crear_carpeta_pago(db: Session, pago_id: int, tipo_entidad: str, entidad_id: int, prestamo_id: Optional[int] = None) -> Optional[Carpeta]:
+        """
+        Crear carpeta automática para un pago específico.
+        Se llama cuando se registra un pago.
+        """
+        try:
+            ahora = datetime.now()
+            nombre_mes = ahora.strftime("%B_%Y").upper()
+
+            # Obtener carpeta del mes actual
+            carpeta_mes = db.query(Carpeta).filter(
+                and_(
+                    Carpeta.tipo == "mes",
+                    Carpeta.nombre == nombre_mes
+                )
+            ).first()
+
+            if not carpeta_mes:
+                # Si no existe carpeta del mes, crearla
+                resultado_mes = DocumentosService.crear_carpetas_mes_actual(db)
+                if not resultado_mes.get("exito", False):
+                    return None
+
+                carpeta_mes = db.query(Carpeta).filter(
+                    and_(
+                        Carpeta.tipo == "mes",
+                        Carpeta.nombre == nombre_mes
+                    )
+                ).first()
+
+                if not carpeta_mes:
+                    return None
+
+            # Buscar carpeta de la entidad (cliente o socio)
+            carpeta_entidad = db.query(Carpeta).filter(
+                and_(
+                    Carpeta.parent_id == carpeta_mes.id,
+                    Carpeta.tipo == tipo_entidad,
+                    Carpeta.entidad_id == entidad_id
+                )
+            ).first()
+
+            if not carpeta_entidad:
+                # Si no existe, crearla según el tipo
+                if tipo_entidad == "cliente":
+                    cliente = db.query(Cliente).filter(Cliente.id == entidad_id).first()
+                    if cliente:
+                        carpeta_entidad = DocumentosService._crear_carpeta_cliente(
+                            db, cliente, carpeta_mes.id, carpeta_mes.ruta_completa
+                        )
+                elif tipo_entidad == "socio":
+                    socio = db.query(Socio).filter(Socio.id == entidad_id).first()
+                    if socio:
+                        carpeta_entidad = DocumentosService._crear_carpeta_socio(
+                            db, socio, carpeta_mes.id, carpeta_mes.ruta_completa
+                        )
+
+                if not carpeta_entidad:
+                    return None
+
+            # Crear subcarpeta de Pagos si no existe
+            carpeta_pagos = db.query(Carpeta).filter(
+                and_(
+                    Carpeta.parent_id == carpeta_entidad.id,
+                    Carpeta.nombre == "Pagos",
+                    Carpeta.tipo == "pagos"
+                )
+            ).first()
+
+            if not carpeta_pagos:
+                carpeta_pagos = Carpeta(
+                    nombre="Pagos",
+                    ruta_completa=f"{carpeta_entidad.ruta_completa}/Pagos",
+                    tipo="pagos",
+                    parent_id=carpeta_entidad.id,
+                    entidad_id=entidad_id,
+                    entidad_tipo=tipo_entidad,
+                    es_automatica=True,
+                    descripcion=f"Carpeta automática para pagos de {tipo_entidad}"
+                )
+
+                db.add(carpeta_pagos)
+                db.flush()
+
+                # Crear directorio físico
+                dir_pagos = DOCUMENTOS_DIR / carpeta_pagos.ruta_completa
+                dir_pagos.mkdir(parents=True, exist_ok=True)
+
+            # Crear carpeta específica para el pago
+            nombre_pago = f"Pago_{pago_id}"
+            if prestamo_id:
+                nombre_pago += f"_Prestamo_{prestamo_id}"
+
+            ruta_pago = f"{carpeta_pagos.ruta_completa}/{nombre_pago}"
+
+            carpeta_pago = Carpeta(
+                nombre=nombre_pago,
+                ruta_completa=ruta_pago,
+                tipo="pago",
+                parent_id=carpeta_pagos.id,
+                entidad_id=entidad_id,
+                entidad_tipo=tipo_entidad,
+                prestamo_id=prestamo_id,
+                pago_id=pago_id,
+                es_automatica=True,
+                descripcion=f"Carpeta automática para pago #{pago_id}"
+            )
+
+            db.add(carpeta_pago)
+            db.flush()
+
+            # Crear directorio físico
+            dir_pago = DOCUMENTOS_DIR / ruta_pago
+            dir_pago.mkdir(parents=True, exist_ok=True)
+
+            db.commit()
+            return carpeta_pago
+
+        except Exception as e:
+            db.rollback()
+            print(f"Error creando carpeta de pago: {e}")
+            return None
+
+    @staticmethod
+    def subir_documento_automatico(db: Session, archivo, carpeta_id: int, tipo_documento: str = "comprobante_pago",
+                                  descripcion: str = "", usuario_id: int = None) -> Optional[dict]:
+        """
+        Subir un documento automáticamente a una carpeta específica.
+        """
+        from app.models.documento import Documento
+        import uuid
+
+        try:
+            # Obtener la carpeta
+            carpeta = db.query(Carpeta).filter(Carpeta.id == carpeta_id).first()
+            if not carpeta:
+                return None
+
+            # Generar nombre único para el archivo
+            extension = Path(archivo.filename).suffix.lower()
+            nombre_unico = f"{uuid.uuid4()}{extension}"
+            ruta_archivo = f"{carpeta.ruta_completa}/{nombre_unico}"
+
+            # Guardar archivo físicamente
+            ruta_completa = DOCUMENTOS_DIR / ruta_archivo
+            ruta_completa.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(ruta_completa, "wb") as f:
+                f.write(archivo.file.read())
+
+            # Crear registro en base de datos
+            documento = Documento(
+                nombre_original=archivo.filename,
+                nombre_archivo=nombre_unico,
+                ruta_archivo=ruta_archivo,
+                tipo_mime=archivo.content_type,
+                tamano=ruta_completa.stat().st_size,
+                descripcion=descripcion,
+                tipo_documento=tipo_documento,
+                carpeta_id=carpeta_id,
+                usuario_subio_id=usuario_id
+            )
+
+            db.add(documento)
+            db.commit()
+
+            return {
+                "id": documento.id,
+                "nombre_original": documento.nombre_original,
+                "ruta_archivo": documento.ruta_archivo,
+                "tipo_documento": documento.tipo_documento
+            }
+
+        except Exception as e:
+            db.rollback()
+            print(f"Error subiendo documento automático: {e}")
+            return None
+
+    @staticmethod
     def crear_carpeta_prestamo(db: Session, prestamo_id: int, cliente_id: int) -> Optional[Carpeta]:
         """
         Crear carpeta automática para un préstamo específico.

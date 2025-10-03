@@ -4,7 +4,7 @@ Endpoints de gestión de pagos
 
 from typing import List, Optional
 from datetime import datetime
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, Form, File, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
@@ -17,6 +17,7 @@ from app.models.pago import Pago
 from app.models.prestamo import Prestamo
 from app.models.socio import Socio
 from app.models.pago_socio import PagoSocio
+from app.services.documentos_service import DocumentosService
 from app.schemas.pago import (
     Pago as PagoSchema, PagoCreate, PagoUpdate,
     PagoFiltro, PagoPaginado, PagoRegistro
@@ -34,7 +35,7 @@ async def registrar_pago(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Registrar un nuevo pago"""
-    # Verificar que el préstamo existe y está activo
+    # Verificar que el préstamo existe y está activo o refinanciado
     prestamo = db.query(Prestamo).filter(Prestamo.id == pago_data.prestamo_id).first()
     if not prestamo:
         raise HTTPException(
@@ -42,7 +43,7 @@ async def registrar_pago(
             detail="Préstamo no encontrado",
         )
 
-    if prestamo.estado != "activo":
+    if prestamo.estado not in ["activo", "refinanciado"]:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No se pueden registrar pagos en préstamos inactivos",
@@ -50,16 +51,19 @@ async def registrar_pago(
 
     # Calcular desglose del pago (lógica simplificada)
     # En un sistema real, esto sería más complejo considerando amortización
-    if pago_data.monto_pagado >= prestamo.valor_cuota:
+    monto_pagado_float = float(pago_data.monto_pagado)
+    valor_cuota_float = float(prestamo.valor_cuota)
+
+    if monto_pagado_float >= valor_cuota_float:
         # Pago completo de cuota
-        capital_pagado = prestamo.valor_cuota * 0.7  # 70% capital (aproximado)
-        intereses_pagados = prestamo.valor_cuota * 0.3  # 30% intereses (aproximado)
+        capital_pagado = valor_cuota_float * 0.7  # 70% capital (aproximado)
+        intereses_pagados = valor_cuota_float * 0.3  # 30% intereses (aproximado)
         tipo_pago = "cuota"
         numero_cuota = (prestamo.cuotas_pagadas + 1)
     else:
         # Pago parcial (abono)
-        capital_pagado = pago_data.monto_pagado * 0.7  # 70% capital
-        intereses_pagados = pago_data.monto_pagado * 0.3  # 30% intereses
+        capital_pagado = monto_pagado_float * 0.7  # 70% capital
+        intereses_pagados = monto_pagado_float * 0.3  # 30% intereses
         tipo_pago = "abono"
         numero_cuota = None
 
@@ -79,16 +83,18 @@ async def registrar_pago(
 
     db.add(db_pago)
 
-    # Actualizar el préstamo
-    if tipo_pago == "cuota":
-        prestamo.cuotas_pagadas += 1
+    # Actualizar el préstamo solo si no es refinanciado con saldo 0
+    # Los préstamos refinanciados mantienen saldo 0 para trazabilidad histórica
+    if not (prestamo.estado == "refinanciado" and prestamo.saldo_pendiente == 0):
+        if tipo_pago == "cuota":
+            prestamo.cuotas_pagadas += 1
 
-    prestamo.saldo_pendiente -= pago_data.monto_pagado
+        prestamo.saldo_pendiente -= pago_data.monto_pagado
 
-    # Verificar si el préstamo está completamente pagado
-    if prestamo.saldo_pendiente <= 0:
-        prestamo.estado = "pagado"
-        prestamo.saldo_pendiente = 0
+        # Verificar si el préstamo está completamente pagado
+        if prestamo.saldo_pendiente <= 0:
+            prestamo.estado = "pagado"
+            prestamo.saldo_pendiente = 0
 
     # Si el préstamo es de un socio, registrar el movimiento correspondiente
     if prestamo.origen == "socio" and prestamo.socio_id:
@@ -124,6 +130,148 @@ async def registrar_pago(
 
     db.commit()
     db.refresh(db_pago)
+
+    return db_pago
+
+@router.post("/con-archivos", response_model=PagoSchema)
+async def registrar_pago_con_archivos(
+    prestamo_id: int = Form(...),
+    monto_pagado: float = Form(...),
+    fecha_pago: Optional[str] = Form(None),
+    metodo_pago: Optional[str] = Form(None),
+    referencia_pago: Optional[str] = Form(None),
+    observaciones: Optional[str] = Form(None),
+    descripcion_archivos: Optional[str] = Form(None),
+    archivos: List[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: Usuario = Depends(get_current_user)
+):
+    """Registrar un nuevo pago con archivos de soporte opcionales"""
+    # Verificar que el préstamo existe y está activo o refinanciado
+    prestamo = db.query(Prestamo).filter(Prestamo.id == prestamo_id).first()
+    if not prestamo:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Préstamo no encontrado",
+        )
+
+    if prestamo.estado not in ["activo", "refinanciado"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No se pueden registrar pagos en préstamos inactivos",
+        )
+
+    # Convertir datos
+    from decimal import Decimal
+    monto_pagado_decimal = Decimal(str(monto_pagado))
+    fecha_pago_datetime = None
+    if fecha_pago:
+        try:
+            fecha_pago_datetime = datetime.fromisoformat(fecha_pago.replace('Z', '+00:00'))
+        except:
+            fecha_pago_datetime = datetime.now()
+
+    # Calcular desglose del pago (lógica simplificada)
+    valor_cuota_float = float(prestamo.valor_cuota)
+    monto_pagado_float = float(monto_pagado_decimal)
+
+    if monto_pagado_float >= valor_cuota_float:
+        # Pago completo de cuota
+        capital_pagado = valor_cuota_float * 0.7  # 70% capital (aproximado)
+        intereses_pagados = valor_cuota_float * 0.3  # 30% intereses (aproximado)
+        tipo_pago = "cuota"
+        numero_cuota = (prestamo.cuotas_pagadas + 1)
+    else:
+        # Pago parcial (abono)
+        capital_pagado = monto_pagado_float * 0.7  # 70% capital
+        intereses_pagados = monto_pagado_float * 0.3  # 30% intereses
+        tipo_pago = "abono"
+        numero_cuota = None
+
+    # Crear el pago
+    db_pago = Pago(
+        prestamo_id=prestamo_id,
+        fecha_pago=fecha_pago_datetime or datetime.now(),
+        monto_pagado=monto_pagado_decimal,
+        tipo_pago=tipo_pago,
+        numero_cuota=numero_cuota,
+        capital_pagado=round(capital_pagado, 2),
+        intereses_pagados=round(intereses_pagados, 2),
+        metodo_pago=metodo_pago,
+        referencia_pago=referencia_pago,
+        observaciones=observaciones
+    )
+
+    db.add(db_pago)
+    db.flush()  # Obtener el ID del pago
+
+    # Crear carpeta automática para el pago
+    carpeta_pago = DocumentosService.crear_carpeta_pago(
+        db, db_pago.id, "cliente", prestamo.cliente_id, prestamo.id
+    )
+
+    # Subir archivos si se proporcionaron
+    documentos_subidos = []
+    if archivos and len(archivos) > 0:
+        for archivo in archivos:
+            if archivo.filename:  # Solo procesar archivos con nombre
+                resultado = DocumentosService.subir_documento_automatico(
+                    db, archivo, carpeta_pago.id,
+                    tipo_documento="comprobante_pago",
+                    descripcion=descripcion_archivos or f"Comprobante de pago #{db_pago.id}",
+                    usuario_id=current_user.id
+                )
+                if resultado:
+                    documentos_subidos.append(resultado)
+
+    # Actualizar el préstamo solo si no es refinanciado con saldo 0
+    # Los préstamos refinanciados mantienen saldo 0 para trazabilidad histórica
+    if not (prestamo.estado == "refinanciado" and prestamo.saldo_pendiente == 0):
+        if tipo_pago == "cuota":
+            prestamo.cuotas_pagadas += 1
+
+        prestamo.saldo_pendiente -= monto_pagado_decimal
+
+        # Verificar si el préstamo está completamente pagado
+        if prestamo.saldo_pendiente <= 0:
+            prestamo.estado = "pagado"
+            prestamo.saldo_pendiente = 0
+
+    # Si el préstamo es de un socio, registrar el movimiento correspondiente
+    if prestamo.origen == "socio" and prestamo.socio_id:
+        socio = db.query(Socio).filter(Socio.id == prestamo.socio_id).first()
+        if socio:
+            # Calcular la participación del socio en este pago
+            porcentaje_socio = socio.porcentaje_participacion or 100.0  # Por defecto 100%
+
+            # El socio recibe su parte del capital pagado
+            monto_socio = (capital_pagado * porcentaje_socio / 100)
+
+            if monto_socio > 0:
+                saldo_anterior = socio.capital_actual
+                socio.capital_actual = float(socio.capital_actual) + float(monto_socio)
+                saldo_nuevo = socio.capital_actual
+
+                # Registrar como "devolucion" (capital devuelto)
+                pago_socio = PagoSocio(
+                    socio_id=prestamo.socio_id,
+                    tipo="devolucion",
+                    monto=monto_socio,
+                    fecha_pago=fecha_pago_datetime or datetime.now(),
+                    descripcion=f"Cuota #{numero_cuota} del préstamo #{prestamo.id}",
+                    prestamo_id=prestamo.id,
+                    saldo_anterior=saldo_anterior,
+                    saldo_nuevo=saldo_nuevo,
+                    registrado_por=current_user.id
+                )
+                db.add(pago_socio)
+                db.add(socio)
+
+    db.commit()
+    db.refresh(db_pago)
+
+    # Agregar información de documentos subidos a la respuesta
+    db_pago.documentos_subidos = documentos_subidos
 
     return db_pago
 

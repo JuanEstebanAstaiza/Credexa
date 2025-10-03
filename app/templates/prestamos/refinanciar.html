@@ -123,7 +123,7 @@
                                     Fecha de Inicio *
                                 </label>
                                 <input type="date" class="form-control" id="fechaInicio"
-                                       value="{{ (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d') }}" required>
+                                       value="" required>
                                 <div class="form-text">Fecha de inicio del nuevo crédito</div>
                             </div>
                         </div>
@@ -359,5 +359,15 @@ async function confirmarRefinanciacion() {
         Utils.showError('Error al realizar la refinanciación: ' + error.message);
     }
 }
+
+// Establecer fecha por defecto (mañana)
+document.addEventListener('DOMContentLoaded', function() {
+    const fechaInput = document.getElementById('fechaInicio');
+    if (fechaInput && !fechaInput.value) {
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        fechaInput.value = tomorrow.toISOString().split('T')[0];
+    }
+});
 </script>
 {% endblock %}

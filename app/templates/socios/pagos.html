@@ -231,7 +231,7 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <form id="form-nuevo-pago">
+                <form id="form-nuevo-pago" enctype="multipart/form-data">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="modal-socio" class="form-label">
@@ -301,6 +301,50 @@
                         <label for="modal-descripcion" class="form-label">Descripción</label>
                         <textarea class="form-control" id="modal-descripcion" name="descripcion"
                                   rows="3" placeholder="Detalles del pago..."></textarea>
+                    </div>
+
+                    <!-- Archivos de soporte opcionales -->
+                    <div class="border rounded p-3 bg-light">
+                        <h6 class="text-muted mb-3">
+                            <i class="fas fa-paperclip"></i> Archivos de Soporte (Opcional)
+                        </h6>
+
+                        <div class="mb-3">
+                            <label for="modal-archivos" class="form-label">
+                                <i class="fas fa-file-upload"></i> Seleccionar Archivos
+                            </label>
+                            <input
+                                type="file"
+                                class="form-control"
+                                id="modal-archivos"
+                                name="archivos"
+                                multiple
+                                accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                            >
+                            <div class="form-text">
+                                <small>Formatos permitidos: PDF, imágenes (JPG, PNG), documentos de Office.<br>
+                                Tamaño máximo por archivo: 10MB. Puede seleccionar múltiples archivos.</small>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="modal-descripcion-archivos" class="form-label">
+                                <i class="fas fa-sticky-note"></i> Descripción de los Archivos
+                            </label>
+                            <textarea
+                                class="form-control"
+                                id="modal-descripcion-archivos"
+                                name="descripcion_archivos"
+                                rows="2"
+                                maxlength="200"
+                                placeholder="Descripción opcional de los archivos adjuntos"
+                            ></textarea>
+                        </div>
+
+                        <div class="alert alert-info py-2" role="alert">
+                            <small><i class="fas fa-info-circle"></i>
+                            Los archivos se guardarán automáticamente en la carpeta correspondiente al pago.</small>
+                        </div>
                     </div>
 
                     <div id="info-saldo" class="alert alert-info" style="display: none;">
@@ -525,27 +569,57 @@ async function registrarPago() {
         submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Registrando...';
         submitBtn.disabled = true;
 
-        // Recopilar datos
+        // Recopilar datos con archivos
         const formData = new FormData(form);
-        const pagoData = {};
 
-        for (let [key, value] of formData.entries()) {
-            if (value.trim() !== '') {
-                if (key === 'socio_id' || key === 'monto') {
-                    pagoData[key] = key === 'socio_id' ? parseInt(value) : parseFloat(value);
-                } else {
-                    pagoData[key] = value;
+        // Obtener socio_id para la URL
+        const socioId = formData.get('socio_id');
+
+        // Verificar si hay archivos adjuntos
+        const archivos = formData.getAll('archivos');
+        const hayArchivos = archivos.some(archivo => archivo.size > 0);
+
+        let response;
+        if (hayArchivos) {
+            // Usar endpoint con archivos
+            response = await fetch(`/api/socios/${socioId}/pagos/con-archivos`, {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Error al registrar el pago con archivos');
+            }
+
+            response = await response.json();
+        } else {
+            // Usar endpoint normal sin archivos
+            const pagoData = {};
+            for (let [key, value] of formData.entries()) {
+                if (value.trim() !== '') {
+                    if (key === 'socio_id') {
+                        pagoData[key] = parseInt(value);
+                    } else if (key === 'monto') {
+                        pagoData[key] = parseFloat(value);
+                    } else if (key !== 'archivos' && key !== 'descripcion_archivos') {
+                        // Excluir campos de archivos
+                        pagoData[key] = value;
+                    }
                 }
             }
+
+            response = await Utils.ajax(`/api/socios/${socioId}/pagos`, {
+                method: 'POST',
+                body: JSON.stringify(pagoData)
+            });
         }
 
-        // Registrar pago
-        const response = await Utils.ajax(`/api/socios/${pagoData.socio_id}/pagos`, {
-            method: 'POST',
-            body: JSON.stringify(pagoData)
-        });
-
-        Utils.showSuccess('Pago registrado exitosamente');
+        let successMessage = 'Pago registrado exitosamente';
+        if (hayArchivos && response.documentos_subidos && response.documentos_subidos.length > 0) {
+            successMessage += ` (${response.documentos_subidos.length} archivo(s) subido(s))`;
+        }
+        Utils.showSuccess(successMessage);
 
         // Cerrar modal y recargar
         const modal = bootstrap.Modal.getInstance(document.getElementById('modalNuevoPago'));

@@ -13,6 +13,7 @@ class Carpeta(Base):
     entidad_id = Column(Integer, nullable=True, index=True)  # ID del cliente o socio
     entidad_tipo = Column(String(20), nullable=True)  # 'cliente' o 'socio'
     prestamo_id = Column(Integer, ForeignKey("prestamos.id"), nullable=True, index=True)
+    pago_id = Column(Integer, nullable=True, index=True)  # ID del pago relacionado
     es_automatica = Column(Boolean, default=False, nullable=False)
     descripcion = Column(Text, nullable=True)
     creada_por = Column(Integer, ForeignKey("usuarios.id"), nullable=True)

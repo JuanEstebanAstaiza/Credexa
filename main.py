@@ -268,8 +268,8 @@ async def pagos_registrar(
 ):
     """Página de registro de pago"""
     from app.models.prestamo import Prestamo
-    # Obtener préstamos activos para el select
-    prestamos = db.query(Prestamo).filter(Prestamo.estado == "activo").order_by(Prestamo.fecha_inicio.desc()).all()
+    # Obtener préstamos activos y refinanciados para el select (permitir pagos en refinanciados)
+    prestamos = db.query(Prestamo).filter(Prestamo.estado.in_(["activo", "refinanciado"])).order_by(Prestamo.fecha_inicio.desc()).all()
 
     return templates.TemplateResponse("pagos/registrar.html", {
         "request": request,

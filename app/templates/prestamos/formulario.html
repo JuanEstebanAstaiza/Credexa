@@ -72,7 +72,7 @@
                                         data-capital="{{ socio.capital_actual }}"
                                         {{ 'selected' if prestamo and prestamo.socio_id == socio.id else '' }}>
                                     {{ socio.nombre_completo }} - {{ socio.cedula }}
-                                    (Capital: {{ socio.capital_actual|number_format(0, ',', '.') }})
+                                    (Capital: ${{ "{:,.0f}".format(socio.capital_actual) }})
                                 </option>
                                 {% endfor %}
                             </select>

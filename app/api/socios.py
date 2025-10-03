@@ -4,7 +4,7 @@ Endpoints de gestión de Socios
 
 from typing import List, Optional
 from datetime import datetime, date, timedelta
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Request, Form, File, UploadFile, Path
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
@@ -16,6 +16,7 @@ from app.core.security import get_current_user, get_current_admin_user
 from app.models.socio import Socio
 from app.models.pago_socio import PagoSocio
 from app.models.user import Usuario as UsuarioModel
+from app.services.documentos_service import DocumentosService
 from app.schemas.socio import (
     Socio as SocioSchema,
     SocioCreate,
@@ -298,6 +299,116 @@ async def registrar_pago_socio(
 
     db.commit()
     db.refresh(db_pago)
+    return db_pago
+
+@router.post("/{socio_id}/pagos/con-archivos", response_model=PagoSocioSchema)
+async def registrar_pago_socio_con_archivos(
+    socio_id: int = Path(...),
+    tipo: str = Form(...),
+    monto: float = Form(...),
+    fecha_pago: Optional[str] = Form(None),
+    metodo_pago: Optional[str] = Form(None),
+    numero_recibo: Optional[str] = Form(None),
+    descripcion: Optional[str] = Form(None),
+    descripcion_archivos: Optional[str] = Form(None),
+    archivos: List[UploadFile] = File(None),
+    db: Session = Depends(get_db),
+    current_user: UsuarioModel = Depends(get_current_user)
+):
+    """Registrar un pago para un socio con archivos de soporte opcionales"""
+    socio = db.query(Socio).filter(Socio.id == socio_id).first()
+    if not socio:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Socio no encontrado"
+        )
+
+    # Convertir datos
+    from decimal import Decimal
+    monto_decimal = Decimal(str(monto))
+    fecha_pago_datetime = None
+    if fecha_pago:
+        try:
+            fecha_pago_datetime = datetime.fromisoformat(fecha_pago.replace('Z', '+00:00'))
+        except:
+            fecha_pago_datetime = datetime.now()
+
+    # Verificar número de recibo único si se proporciona
+    if numero_recibo:
+        db_pago = db.query(PagoSocio).filter(PagoSocio.numero_recibo == numero_recibo).first()
+        if db_pago:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Ya existe un pago con este número de recibo"
+            )
+
+    # Verificar permisos por tipo de pago
+    tipos_admin = ['aporte', 'devolucion', 'ganancia', 'retiro']
+    if tipo in tipos_admin and not current_user.is_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Solo administradores pueden registrar pagos de tipo '{tipo}'"
+        )
+
+    # Calcular saldos
+    saldo_anterior = socio.capital_actual
+    if tipo in ['aporte', 'prestamo']:
+        saldo_nuevo = saldo_anterior + monto_decimal
+    else:  # devolucion, ganancia, retiro
+        saldo_nuevo = saldo_anterior - monto_decimal
+
+    # Verificar que no se retire más de lo disponible
+    if tipo in ['devolucion', 'ganancia', 'retiro'] and saldo_nuevo < 0:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No hay suficiente capital disponible para esta operación"
+        )
+
+    # Crear el pago
+    db_pago = PagoSocio(
+        socio_id=socio_id,
+        tipo=tipo,
+        monto=monto_decimal,
+        fecha_pago=fecha_pago_datetime or datetime.now(),
+        metodo_pago=metodo_pago,
+        numero_recibo=numero_recibo,
+        descripcion=descripcion,
+        saldo_anterior=saldo_anterior,
+        saldo_nuevo=saldo_nuevo,
+        registrado_por=current_user.id
+    )
+
+    db.add(db_pago)
+    db.flush()  # Obtener el ID del pago
+
+    # Crear carpeta automática para el pago
+    carpeta_pago = DocumentosService.crear_carpeta_pago(
+        db, db_pago.id, "socio", socio_id
+    )
+
+    # Subir archivos si se proporcionaron
+    documentos_subidos = []
+    if archivos and len(archivos) > 0:
+        for archivo in archivos:
+            if archivo.filename:  # Solo procesar archivos con nombre
+                resultado = DocumentosService.subir_documento_automatico(
+                    db, archivo, carpeta_pago.id,
+                    tipo_documento="comprobante_pago",
+                    descripcion=descripcion_archivos or f"Comprobante de pago #{db_pago.id}",
+                    usuario_id=current_user.id
+                )
+                if resultado:
+                    documentos_subidos.append(resultado)
+
+    # Actualizar capital del socio
+    socio.capital_actual = saldo_nuevo
+
+    db.commit()
+    db.refresh(db_pago)
+
+    # Agregar información de documentos subidos a la respuesta
+    db_pago.documentos_subidos = documentos_subidos
+
     return db_pago
 
 

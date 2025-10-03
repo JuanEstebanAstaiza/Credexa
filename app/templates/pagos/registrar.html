@@ -24,7 +24,7 @@
                 </div>
 
                 <!-- Formulario -->
-                <form id="pago-form">
+                <form id="pago-form" enctype="multipart/form-data">
                     <div class="row">
                         <div class="col-md-6 mb-3">
                             <label for="prestamo_id" class="form-label">
@@ -37,13 +37,17 @@
                                     "cliente": "{{ prestamo.cliente.nombre_completo }}",
                                     "monto": {{ prestamo.monto }},
                                     "cuota": {{ prestamo.valor_cuota }},
-                                    "saldo": {{ prestamo.saldo_pendiente }}
+                                    "saldo": {{ prestamo.saldo_pendiente }},
+                                    "estado": "{{ prestamo.estado }}"
                                 }'>
                                     #{{ prestamo.id }} - {{ prestamo.cliente.nombre_completo }} (${{ "{:,.0f}".format(prestamo.monto) }})
+                                    {% if prestamo.estado == 'refinanciado' %}
+                                        <span class="badge bg-info ms-2">Refinanciado</span>
+                                    {% endif %}
                                 </option>
                                 {% endfor %}
                             </select>
-                            <div class="form-text">Solo préstamos activos disponibles</div>
+                            <div class="form-text">Préstamos activos y refinanciados disponibles</div>
                         </div>
 
                         <div class="col-md-6 mb-3">
@@ -155,6 +159,53 @@
                         ></textarea>
                     </div>
 
+                    <!-- Archivos de soporte opcionales -->
+                    <div class="card border-info mb-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0">
+                                <i class="fas fa-paperclip"></i> Archivos de Soporte (Opcional)
+                            </h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label for="archivos_soporte" class="form-label">
+                                    <i class="fas fa-file-upload"></i> Seleccionar Archivos
+                                </label>
+                                <input
+                                    type="file"
+                                    class="form-control"
+                                    id="archivos_soporte"
+                                    name="archivos"
+                                    multiple
+                                    accept=".pdf,.jpg,.jpeg,.png,.doc,.docx,.xls,.xlsx"
+                                >
+                                <div class="form-text">
+                                    <small>Formatos permitidos: PDF, imágenes (JPG, PNG), documentos de Office.<br>
+                                    Tamaño máximo por archivo: 10MB. Puede seleccionar múltiples archivos.</small>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="descripcion_archivos" class="form-label">
+                                    <i class="fas fa-sticky-note"></i> Descripción de los Archivos
+                                </label>
+                                <textarea
+                                    class="form-control"
+                                    id="descripcion_archivos"
+                                    name="descripcion_archivos"
+                                    rows="2"
+                                    maxlength="200"
+                                    placeholder="Descripción opcional de los archivos adjuntos (ej: comprobante bancario, recibo, etc.)"
+                                ></textarea>
+                            </div>
+
+                            <div class="alert alert-info" role="alert">
+                                <i class="fas fa-info-circle"></i>
+                                <strong>Nota:</strong> Los archivos se guardarán automáticamente en la carpeta correspondiente al pago dentro del sistema de documentos.
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Resumen del pago -->
                     <div id="pago-resumen" class="card bg-light mb-3 d-none">
                         <div class="card-body">
@@ -227,21 +278,15 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Recopilar datos del formulario
+        // Recopilar datos del formulario con archivos
         const formData = new FormData(this);
-        const pagoData = {};
-        formData.forEach((value, key) => {
-            if (value.trim() !== '') {
-                // Convertir valores numéricos
-                if (key === 'prestamo_id') {
-                    pagoData[key] = parseInt(value);
-                } else if (key === 'monto_pagado') {
-                    pagoData[key] = parseFloat(value);
-                } else {
-                    pagoData[key] = value;
-                }
-            }
-        });
+
+        // Convertir fecha a formato ISO si existe
+        const fechaPago = formData.get('fecha_pago');
+        if (fechaPago) {
+            const fechaObj = new Date(fechaPago);
+            formData.set('fecha_pago', fechaObj.toISOString());
+        }
 
         try {
             submitBtn.disabled = true;
@@ -251,12 +296,24 @@ document.addEventListener('DOMContentLoaded', function() {
             errorMessage.classList.add('d-none');
             successMessage.classList.add('d-none');
 
-            const response = await Utils.ajax('/api/pagos', {
+            // Usar la nueva API con archivos
+            const response = await fetch('/api/pagos/con-archivos', {
                 method: 'POST',
-                body: JSON.stringify(pagoData)
+                body: formData
             });
 
-            successText.textContent = 'Pago registrado exitosamente';
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Error al registrar el pago');
+            }
+
+            const result = await response.json();
+
+            let successMessageText = 'Pago registrado exitosamente';
+            if (result.documentos_subidos && result.documentos_subidos.length > 0) {
+                successMessageText += ` (${result.documentos_subidos.length} archivo(s) subido(s))`;
+            }
+            successText.textContent = successMessageText;
             successMessage.classList.remove('d-none');
 
             // Redirigir después de 2 segundos

@@ -143,7 +143,7 @@
 </div>
 
 <!-- Modal de confirmación -->
-<div class="modal fade" id="confirmModal" tabindex="-1">
+<div class="modal fade" id="confirmModalPrestamos" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header">
@@ -313,10 +313,12 @@ function mostrarPrestamos(data) {
                         <a href="/prestamos/${prestamo.id}/detalle" class="btn btn-outline-info" title="Ver Detalle">
                             <i class="fas fa-eye"></i>
                         </a>
-                        ${prestamo.estado === 'activo' ?
-                            `<button class="btn btn-outline-success" onclick="refinanciarPrestamo(${prestamo.id})" title="Refinanciar">
-                                <i class="fas fa-sync-alt"></i>
-                            </button>
+                        ${(prestamo.estado === 'activo' || prestamo.estado === 'refinanciado') ?
+                            `${prestamo.estado === 'activo' ?
+                                `<button class="btn btn-outline-success" onclick="refinanciarPrestamo(${prestamo.id})" title="Refinanciar">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>` : ''
+                            }
                             <button class="btn btn-outline-danger" onclick="eliminarPrestamo(${prestamo.id})" title="Eliminar">
                                 <i class="fas fa-trash"></i>
                             </button>` : ''
@@ -383,16 +385,40 @@ function cambiarPagina(pagina) {
 }
 
 async function eliminarPrestamo(prestamoId) {
-    if (await Utils.confirm('¿Estás seguro de que deseas eliminar este préstamo? Esta acción no se puede deshacer.', 'Eliminar Préstamo')) {
-        try {
-            await Utils.ajax(`/api/prestamos/${prestamoId}`, { method: 'DELETE' });
-            Utils.showSuccess('Préstamo eliminado exitosamente');
-            cargarEstadisticas();
-            cargarPrestamos();
-        } catch (error) {
-            Utils.showError('Error al eliminar el préstamo');
-        }
-    }
+    return new Promise((resolve) => {
+        // Configurar el modal de confirmación
+        document.getElementById('confirm-message').textContent =
+            '¿Estás seguro de que deseas eliminar este préstamo? Esta acción no se puede deshacer.';
+
+        const modal = new bootstrap.Modal(document.getElementById('confirmModalPrestamos'));
+        modal.show();
+
+        // Configurar el botón de confirmar
+        const confirmBtn = document.getElementById('confirm-action');
+        const handleConfirm = async () => {
+            modal.hide();
+            confirmBtn.removeEventListener('click', handleConfirm);
+
+            try {
+                await Utils.ajax(`/api/prestamos/${prestamoId}`, { method: 'DELETE' });
+                Utils.showSuccess('Préstamo eliminado exitosamente');
+                cargarEstadisticas();
+                cargarPrestamos();
+                resolve(true);
+            } catch (error) {
+                Utils.showError('Error al eliminar el préstamo: ' + (error.detail || error.message || 'Error desconocido'));
+                resolve(false);
+            }
+        };
+
+        confirmBtn.addEventListener('click', handleConfirm);
+
+        // Limpiar event listener cuando se cierre el modal
+        document.getElementById('confirmModalPrestamos').addEventListener('hidden.bs.modal', function() {
+            confirmBtn.removeEventListener('click', handleConfirm);
+            resolve(false);
+        }, { once: true });
+    });
 }
 
 async function refinanciarPrestamo(prestamoId) {
