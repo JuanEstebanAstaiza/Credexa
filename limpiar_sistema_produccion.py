@@ -139,20 +139,20 @@ def limpiar_sistema():
                 admin_user = db.query(Usuario).filter(Usuario.username == "admin").first()
                 if admin_user:
                     # Actualizar contraseña y datos
-                    from werkzeug.security import generate_password_hash
-                    admin_user.hashed_password = generate_password_hash('admin123')
+                    from app.core.security import get_password_hash
+                    admin_user.hashed_password = get_password_hash('admin123')
                     admin_user.nombre_completo = 'Administrador'
                     admin_user.email = 'admin@empresa.com'
                     admin_user.activo = True
                     admin_user.rol_id = admin_role.id
                 else:
                     # Crear usuario admin
-                    from werkzeug.security import generate_password_hash
+                    from app.core.security import get_password_hash
                     admin_user = Usuario(
                         nombre_completo='Administrador',
                         username='admin',
                         email='admin@empresa.com',
-                        hashed_password=generate_password_hash('admin123'),
+                        hashed_password=get_password_hash('admin123'),
                         rol_id=admin_role.id,
                         activo=True
                     )
