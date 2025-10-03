@@ -19,6 +19,7 @@ from app.core.security import (
 from jose import JWTError, jwt
 from app.core.config import settings
 from app.models.user import Usuario, Rol
+from app.models.solicitud_password import SolicitudPassword
 from app.schemas.user import (
     Usuario as UsuarioSchema, UsuarioCreate, UsuarioUpdate, LoginRequest, Token,
     PasswordResetRequest, PasswordReset
@@ -343,7 +344,6 @@ async def solicitar_cambio_password(
     current_user: Usuario = Depends(get_current_user)
 ):
     """Solicitar cambio de contraseña (para digitadores)"""
-    from app.models.solicitud_password import SolicitudPassword
 
     # Solo usuarios no administradores pueden solicitar cambio
     if current_user.is_admin:
@@ -387,15 +387,16 @@ async def listar_solicitudes_password(
     current_user: Usuario = Depends(get_current_admin_user)
 ):
     """Listar solicitudes de cambio de contraseña (solo admin)"""
-    from app.models.solicitud_password import SolicitudPassword
 
     query = db.query(
         SolicitudPassword,
         Usuario.nombre_completo.label('usuario_nombre'),
         Usuario.username.label('usuario_username'),
-        Usuario.rol.label('usuario_rol')
+        Rol.nombre.label('usuario_rol')
     ).join(
         Usuario, SolicitudPassword.usuario_id == Usuario.id
+    ).join(
+        Rol, Usuario.rol_id == Rol.id
     )
 
     if estado:
@@ -426,7 +427,7 @@ async def listar_solicitudes_password(
             "respondido_por": sol.respondido_por,
             "usuario_nombre": nombre,
             "usuario_username": username,
-            "usuario_rol": rol.nombre if rol else "Sin rol"
+            "usuario_rol": rol if rol else "Sin rol"
         }
 
         # Agregar info del admin si aplica
@@ -453,7 +454,6 @@ async def responder_solicitud_password(
     current_user: Usuario = Depends(get_current_admin_user)
 ):
     """Responder a una solicitud de cambio de contraseña (solo admin)"""
-    from app.models.solicitud_password import SolicitudPassword
 
     solicitud = db.query(SolicitudPassword).filter(SolicitudPassword.id == solicitud_id).first()
 
@@ -470,8 +470,8 @@ async def responder_solicitud_password(
         )
 
     # Actualizar solicitud
-    solicitud.estado = respuesta.estado or solicitud.estado
-    solicitud.comentarios_admin = respuesta.comentarios_admin or solicitud.comentarios_admin
+    solicitud.estado = respuesta.get('estado') or solicitud.estado
+    solicitud.comentarios_admin = respuesta.get('comentarios_admin') or solicitud.comentarios_admin
     solicitud.fecha_respuesta = func.now()
     solicitud.respondido_por = current_user.id
 
@@ -479,10 +479,10 @@ async def responder_solicitud_password(
     if solicitud.estado == "aprobada":
         usuario = db.query(Usuario).filter(Usuario.id == solicitud.usuario_id).first()
 
-        if respuesta.nueva_password:
+        if respuesta.get('nueva_password'):
             # Usar la contraseña proporcionada por el admin
-            usuario.hashed_password = get_password_hash(respuesta.nueva_password)
-            solicitud.nueva_password = respuesta.nueva_password  # Guardar para referencia
+            usuario.hashed_password = get_password_hash(respuesta.get('nueva_password'))
+            solicitud.nueva_password = respuesta.get('nueva_password')  # Guardar para referencia
         else:
             # Generar una contraseña aleatoria
             nueva_password = secrets.token_urlsafe(8)
@@ -565,6 +565,66 @@ async def cambiar_mi_password_admin(
             detail="Token de verificación inválido",
             headers={"WWW-Authenticate": "Bearer"},
         )
+
+@router.post("/auth/solicitar-cambio-password-publico")
+async def solicitar_cambio_password_publico(
+    data: dict,
+    db: Session = Depends(get_db)
+):
+    """Endpoint público para que digitadores soliciten cambio de contraseña sin estar autenticados"""
+    username = data.get('username', '').strip()
+    email = data.get('email', '').strip()
+    motivo = data.get('motivo', '').strip()
+
+    if not username or not email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Usuario y email son requeridos"
+        )
+
+    # Verificar que el usuario existe y es digitador
+    usuario = db.query(Usuario).join(Rol).filter(
+        Usuario.username == username,
+        Usuario.email == email,
+        Usuario.activo == True,
+        Rol.nombre != "admin"  # Solo para digitadores, no admins
+    ).first()
+
+    if not usuario:
+        # Por seguridad, no revelamos si el usuario existe o no
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Datos de usuario incorrectos. Verifica tu información."
+        )
+
+    # Verificar que no haya una solicitud pendiente reciente
+    from datetime import datetime, timedelta
+    hace_24_horas = datetime.utcnow() - timedelta(hours=24)
+
+    solicitud_existente = db.query(SolicitudPassword).filter(
+        SolicitudPassword.usuario_id == usuario.id,
+        SolicitudPassword.estado == "pendiente",
+        SolicitudPassword.fecha_solicitud > hace_24_horas
+    ).first()
+
+    if solicitud_existente:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya tienes una solicitud pendiente. Espera a que sea procesada por tu administrador."
+        )
+
+    # Crear nueva solicitud
+    nueva_solicitud = SolicitudPassword(
+        usuario_id=usuario.id,
+        tipo_solicitud="usuario",
+        estado="pendiente",
+        motivo=motivo if motivo else "Solicitud desde página pública de recuperación"
+    )
+
+    db.add(nueva_solicitud)
+    db.commit()
+
+    return {"message": "Solicitud de cambio de contraseña enviada exitosamente. Tu administrador la procesará pronto."}
 
 @router.post("/auth/verificar-admin")
 async def verificar_admin(
