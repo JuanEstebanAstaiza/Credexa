@@ -1,0 +1,306 @@
+{% extends "base.html" %}
+
+{% block title %}Configuración de Email{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">
+                    <i class="fas fa-envelope"></i>
+                    Configuración de Email SMTP
+                </h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    Configura el servicio de envío de correos electrónicos para notificaciones del sistema.
+                    Los correos se envían para cambios de contraseña, solicitudes de usuarios, etc.
+                </p>
+
+                <!-- Estado de configuración -->
+                <div class="alert" id="status-alert" style="display: none;">
+                    <i class="fas fa-info-circle"></i>
+                    <span id="status-message"></span>
+                </div>
+
+                <form id="form-email-config">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="smtp_server" class="form-label">Servidor SMTP *</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="smtp_server"
+                                name="smtp_server"
+                                placeholder="smtp.gmail.com"
+                                required
+                            >
+                            <div class="form-text">
+                                Ejemplos: smtp.gmail.com, smtp.outlook.com, smtp.office365.com
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <label for="smtp_port" class="form-label">Puerto *</label>
+                            <input
+                                type="number"
+                                class="form-control"
+                                id="smtp_port"
+                                name="smtp_port"
+                                placeholder="587"
+                                min="1"
+                                max="65535"
+                                value="587"
+                                required
+                            >
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Seguridad</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="smtp_use_tls" name="smtp_use_tls" checked>
+                                <label class="form-check-label" for="smtp_use_tls">
+                                    TLS
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="smtp_use_ssl" name="smtp_use_ssl">
+                                <label class="form-check-label" for="smtp_use_ssl">
+                                    SSL
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="smtp_username" class="form-label">Usuario SMTP *</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="smtp_username"
+                                name="smtp_username"
+                                placeholder="tu.email@gmail.com"
+                                required
+                            >
+                            <div class="form-text">
+                                Generalmente es tu dirección de email completa
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="smtp_password" class="form-label">Contraseña SMTP *</label>
+                            <input
+                                type="password"
+                                class="form-control"
+                                id="smtp_password"
+                                name="smtp_password"
+                                placeholder="Contraseña de aplicación"
+                                required
+                            >
+                            <div class="form-text">
+                                Para Gmail/Outlook, usa una "contraseña de aplicación"
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="email_from" class="form-label">Email Remitente *</label>
+                            <input
+                                type="email"
+                                class="form-control"
+                                id="email_from"
+                                name="email_from"
+                                placeholder="sistema@tuempresa.com"
+                                required
+                            >
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="email_from_name" class="form-label">Nombre Remitente *</label>
+                            <input
+                                type="text"
+                                class="form-control"
+                                id="email_from_name"
+                                name="email_from_name"
+                                placeholder="Sistema Credexa"
+                                required
+                            >
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <h6><i class="fas fa-info-circle"></i> Información importante</h6>
+                        <ul class="mb-0">
+                            <li><strong>Gmail:</strong> Puerto 587, TLS activado. Usa "contraseña de aplicación"</li>
+                            <li><strong>Outlook:</strong> Puerto 587, TLS activado. Usa "contraseña de aplicación"</li>
+                            <li><strong>Configuración personal:</strong> Consulta la documentación de tu proveedor</li>
+                            <li><strong>Seguridad:</strong> Las contraseñas se manejan de forma segura</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success" id="btn-guardar">
+                            <i class="fas fa-save"></i>
+                            Guardar y Probar Configuración
+                        </button>
+                        <button type="button" class="btn btn-outline-primary" id="btn-probar">
+                            <i class="fas fa-paper-plane"></i>
+                            Enviar Email de Prueba
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="btn-cargar">
+                            <i class="fas fa-sync"></i>
+                            Cargar Configuración Actual
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Información de uso -->
+        <div class="card mt-3">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-question-circle"></i>
+                    ¿Cuándo se envían emails?
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Administradores:</h6>
+                        <ul>
+                            <li>Confirmación al cambiar contraseña propia</li>
+                            <li>Notificación al cambiar contraseña de otros usuarios</li>
+                            <li>Procesamiento de solicitudes de usuarios</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Digitadores:</h6>
+                        <ul>
+                            <li>Confirmación de solicitud de cambio de contraseña</li>
+                            <li>Notificación cuando se procesa la solicitud</li>
+                            <li>Nueva contraseña asignada</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('form-email-config');
+    const btnGuardar = document.getElementById('btn-guardar');
+    const btnProbar = document.getElementById('btn-probar');
+    const btnCargar = document.getElementById('btn-cargar');
+    const statusAlert = document.getElementById('status-alert');
+    const statusMessage = document.getElementById('status-message');
+
+    // Función para mostrar mensajes de estado
+    function showStatus(message, type = 'info') {
+        statusAlert.className = `alert alert-${type}`;
+        statusMessage.textContent = message;
+        statusAlert.style.display = 'block';
+
+        // Ocultar automáticamente después de 5 segundos
+        setTimeout(() => {
+            statusAlert.style.display = 'none';
+        }, 5000);
+    }
+
+    // Cargar configuración actual
+    async function cargarConfig() {
+        try {
+            const response = await Utils.ajax('/api/configuracion/email/config');
+            Object.keys(response).forEach(key => {
+                const element = document.getElementById(key);
+                if (element) {
+                    if (element.type === 'checkbox') {
+                        element.checked = response[key];
+                    } else {
+                        element.value = response[key] || '';
+                    }
+                }
+            });
+
+            if (response.is_configured) {
+                showStatus('Configuración cargada correctamente', 'success');
+            } else {
+                showStatus('El servicio de email no está configurado', 'warning');
+            }
+        } catch (error) {
+            showStatus('Error al cargar la configuración', 'danger');
+        }
+    }
+
+    // Guardar configuración
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const formData = new FormData(form);
+        const configData = {
+            smtp_server: formData.get('smtp_server'),
+            smtp_port: parseInt(formData.get('smtp_port')),
+            smtp_username: formData.get('smtp_username'),
+            smtp_password: formData.get('smtp_password'),
+            smtp_use_tls: document.getElementById('smtp_use_tls').checked,
+            smtp_use_ssl: document.getElementById('smtp_use_ssl').checked,
+            email_from: formData.get('email_from'),
+            email_from_name: formData.get('email_from_name')
+        };
+
+        btnGuardar.disabled = true;
+        btnGuardar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Guardando...';
+
+        try {
+            const response = await Utils.ajax('/api/configuracion/email/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(configData)
+            });
+
+            showStatus(response.message, 'success');
+            await cargarConfig(); // Recargar configuración
+
+        } catch (error) {
+            showStatus(error.message || 'Error al guardar la configuración', 'danger');
+        } finally {
+            btnGuardar.disabled = false;
+            btnGuardar.innerHTML = '<i class="fas fa-save"></i> Guardar y Probar Configuración';
+        }
+    });
+
+    // Enviar email de prueba
+    btnProbar.addEventListener('click', async function() {
+        btnProbar.disabled = true;
+        btnProbar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
+
+        try {
+            const response = await Utils.ajax('/api/configuracion/email/test', {
+                method: 'POST'
+            });
+
+            showStatus(response.message, 'success');
+
+        } catch (error) {
+            showStatus(error.message || 'Error al enviar email de prueba', 'danger');
+        } finally {
+            btnProbar.disabled = false;
+            btnProbar.innerHTML = '<i class="fas fa-paper-plane"></i> Enviar Email de Prueba';
+        }
+    });
+
+    // Cargar configuración al inicio
+    btnCargar.addEventListener('click', cargarConfig);
+
+    // Cargar configuración inicial
+    cargarConfig();
+});
+</script>
+{% endblock %}

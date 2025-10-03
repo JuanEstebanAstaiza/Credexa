@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo de Emails Coloridos - Credexa</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .email-demo { margin: 30px 0; border: 1px solid #ddd; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .email-title { background: #667eea; color: white; padding: 15px 20px; margin: 0; font-size: 18px; }
+        .email-content { padding: 20px; }
+        .email-preview { background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 20px 0; }
+        .email-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; color: white; }
+        .email-header h1 { margin: 0; font-size: 24px; }
+        .email-body { padding: 40px 30px; }
+        .feature-box { background: linear-gradient(135deg, #55efc4 0%, #00b894 100%); border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center; }
+        .feature-box h3 { color: white; margin: 0 0 10px; }
+        .warning-box { background: linear-gradient(135deg, #ffeaa7 0%, #fab1a0 100%); padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .warning-box h4 { color: #d63031; margin: 0 0 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1 style="text-align: center; color: #333;">🎨 Demo de Emails Coloridos - Credexa</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 40px;">Vista previa de los nuevos diseños de email con colores vibrantes</p>
+
+        <div class="email-demo">
+            <h2 class="email-title">📧 Email de Confirmación de Solicitud de Cambio de Contraseña</h2>
+            <div class="email-content">
+                <div class="email-preview">
+                    <div class="email-header">
+                        <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                            <span style="font-size: 36px;">📋</span>
+                        </div>
+                        <h1>Solicitud Recibida</h1>
+                        <p>Credexa</p>
+                    </div>
+                    <div class="email-body">
+                        <h2 style="color: #333;">Hola Juan Pérez,</h2>
+                        <p>Hemos recibido exitosamente tu solicitud de cambio de contraseña.</p>
+
+                        <div class="feature-box">
+                            <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 28px;">⏳</span>
+                            </div>
+                            <h3>Estado: Pendiente de Revisión</h3>
+                            <p>Un administrador revisará tu solicitud y procesará el cambio de contraseña en breve.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="email-demo">
+            <h2 class="email-title">✅ Email de Contraseña Cambiada por Administrador</h2>
+            <div class="email-content">
+                <div class="email-preview">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; color: white;">
+                        <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                            <span style="font-size: 36px;">🔐</span>
+                        </div>
+                        <h1>Contraseña Actualizada</h1>
+                    </div>
+                    <div style="padding: 40px 30px;">
+                        <h2>Hola María González,</h2>
+                        <p>Tu contraseña ha sido actualizada por el administrador <strong style="color: #667eea;">Admin Principal</strong>.</p>
+
+                        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); border-radius: 12px; padding: 25px; margin: 30px 0; text-align: center;">
+                            <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 28px;">🔑</span>
+                            </div>
+                            <h3 style="color: white;">Tu Nueva Contraseña</h3>
+                            <div style="background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 15px; display: inline-block;">
+                                <code style="font-size: 24px; font-weight: bold; color: white; font-family: 'Courier New', monospace;">AbCdEf123</code>
+                            </div>
+                        </div>
+
+                        <div class="warning-box">
+                            <h4>⚠️ Importante</h4>
+                            <p>Te recomendamos cambiar esta contraseña temporal lo antes posible por una de tu preferencia desde tu perfil de usuario.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="email-demo">
+            <h2 class="email-title">🎯 Email de Configuración SMTP Completada</h2>
+            <div class="email-content">
+                <div class="email-preview">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px 30px; text-align: center; color: white;">
+                        <div style="width: 80px; height: 80px; background: rgba(255,255,255,0.2); border-radius: 50%; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center;">
+                            <span style="font-size: 36px;">🎯</span>
+                        </div>
+                        <h1>Configuración Completada</h1>
+                    </div>
+                    <div style="padding: 40px 30px;">
+                        <h2>¡Hola Administrador!</h2>
+                        <p>La configuración del servicio de email ha sido completada exitosamente.</p>
+
+                        <div style="background: linear-gradient(135deg, #00b894 0%, #00cec9 100%); border-radius: 12px; padding: 25px; margin: 30px 0; text-align: center;">
+                            <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.3); border-radius: 50%; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center;">
+                                <span style="font-size: 28px;">✅</span>
+                            </div>
+                            <h3 style="color: white;">¡Servicio de Email Activo!</h3>
+                            <p>Los emails del sistema ahora se enviarán correctamente.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div style="background: white; padding: 30px; border-radius: 8px; margin-top: 40px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+            <h2 style="color: #333; margin-top: 0;">🎨 Características del Nuevo Diseño</h2>
+            <ul style="color: #666; line-height: 1.6;">
+                <li><strong>Gradientes vibrantes:</strong> Colores modernos y atractivos</li>
+                <li><strong>Emojis expresivos:</strong> Iconos que transmiten emociones claras</li>
+                <li><strong>Diseño responsive:</strong> Se ve perfecto en móvil y desktop</li>
+                <li><strong>Elementos visuales:</strong> Cajas destacadas para información importante</li>
+                <li><strong>Tipografía moderna:</strong> Fuentes legibles y profesionales</li>
+                <li><strong>Sombras y efectos:</strong> Profundidad visual atractiva</li>
+                <li><strong>Colores temáticos:</strong> Verde para éxito, naranja para advertencias, etc.</li>
+            </ul>
+        </div>
+    </div>
+</body>
+</html>

@@ -459,6 +459,18 @@ async def configuracion_usuarios(
         "user": current_user
     })
 
+@app.get("/configuracion/email", response_class=HTMLResponse)
+async def configuracion_email(
+    request: Request,
+    current_user: Usuario = Depends(get_current_admin_user)
+):
+    """Página de configuración de email"""
+    return templates.TemplateResponse("configuracion/email.html", {
+        "request": request,
+        "title": "Configuración de Email",
+        "user": current_user
+    })
+
 @app.get("/configuracion/sistema", response_class=HTMLResponse)
 async def configuracion_sistema(
     request: Request,

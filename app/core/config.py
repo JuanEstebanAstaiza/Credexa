@@ -3,7 +3,7 @@ Configuración de la aplicación
 """
 
 import os
-from typing import List
+from typing import List, Optional
 import secrets
 from pathlib import Path
 import pytz
@@ -40,6 +40,18 @@ class Settings:
 
     # CORS
     BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:8000", "http://127.0.0.1:8000"]
+
+    # Email SMTP
+    SMTP_SERVER: str = os.getenv("SMTP_SERVER", "")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USERNAME: str = os.getenv("SMTP_USERNAME", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_USE_TLS: bool = os.getenv("SMTP_USE_TLS", "true").lower() == "true"
+    SMTP_USE_SSL: bool = os.getenv("SMTP_USE_SSL", "false").lower() == "true"
+
+    # Email de envío
+    EMAIL_FROM: str = os.getenv("EMAIL_FROM", EMPRESA_EMAIL)
+    EMAIL_FROM_NAME: str = os.getenv("EMAIL_FROM_NAME", EMPRESA_NOMBRE)
 
     class Config:
         env_file = ".env"

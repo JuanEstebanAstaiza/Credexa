@@ -491,6 +491,29 @@ async def responder_solicitud_password(
 
         solicitud.estado = "completada"  # Marcar como completada inmediatamente
 
+        # Enviar email de notificación al usuario
+        from app.services.email_service import email_service
+        email_service.send_password_request_processed(
+            user_email=usuario.email,
+            user_name=usuario.nombre_completo,
+            approved=True,
+            admin_name=current_user.nombre_completo,
+            new_password=solicitud.nueva_password,
+            comments=respuesta.get('comentarios_admin')
+        )
+
+    elif solicitud.estado == "rechazada":
+        # Enviar email de rechazo al usuario
+        usuario = db.query(Usuario).filter(Usuario.id == solicitud.usuario_id).first()
+        from app.services.email_service import email_service
+        email_service.send_password_request_processed(
+            user_email=usuario.email,
+            user_name=usuario.nombre_completo,
+            approved=False,
+            admin_name=current_user.nombre_completo,
+            comments=respuesta.get('comentarios_admin')
+        )
+
     db.commit()
 
     return {"message": f"Solicitud {'aprobada' if solicitud.estado == 'completada' else 'rechazada'} exitosamente"}
@@ -514,6 +537,16 @@ async def cambiar_password_admin(
     # Actualizar contraseña
     usuario.hashed_password = get_password_hash(nueva_password)
     db.commit()
+
+    # Enviar notificación por email al usuario
+    from app.services.email_service import email_service
+    email_service.send_password_change_notification(
+        user_email=usuario.email,
+        user_name=usuario.nombre_completo,
+        new_password=nueva_password,
+        changed_by_admin=True,
+        admin_name=current_user.nombre_completo
+    )
 
     return {"message": f"Contraseña de {usuario.nombre_completo} actualizada exitosamente"}
 
@@ -556,6 +589,15 @@ async def cambiar_mi_password_admin(
         # Cambiar la contraseña
         usuario.hashed_password = get_password_hash(nueva_password)
         db.commit()
+
+        # Enviar notificación por email al administrador
+        from app.services.email_service import email_service
+        email_service.send_password_change_notification(
+            user_email=usuario.email,
+            user_name=usuario.nombre_completo,
+            new_password=nueva_password,
+            changed_by_admin=False  # Es un cambio propio, no por otro admin
+        )
 
         return {"message": f"Contraseña actualizada exitosamente. Ahora puedes iniciar sesión normalmente."}
 
@@ -623,6 +665,13 @@ async def solicitar_cambio_password_publico(
 
     db.add(nueva_solicitud)
     db.commit()
+
+    # Enviar email de confirmación al usuario
+    from app.services.email_service import email_service
+    email_service.send_password_request_confirmation(
+        user_email=usuario.email,
+        user_name=usuario.nombre_completo
+    )
 
     return {"message": "Solicitud de cambio de contraseña enviada exitosamente. Tu administrador la procesará pronto."}
 
