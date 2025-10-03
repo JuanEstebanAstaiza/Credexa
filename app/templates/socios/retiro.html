@@ -71,7 +71,7 @@
                     </div>
                     <div class="col-md-6">
                         <p><strong>Email:</strong> <span id="socio-email">{{ socio.email or 'No registrado' }}</span></p>
-                        <p><strong>Fecha de Nacimiento:</strong> <span id="socio-fecha">{{ socio.fecha_nacimiento.strftime('%d/%m/%Y') if socio.fecha_nacimiento else 'No registrada' }}</span></p>
+                        <p><strong>Fecha de Nacimiento:</strong> <span id="socio-fecha">{{ socio.fecha_nacimiento | fecha_colombia_corta if socio.fecha_nacimiento else 'No registrada' }}</span></p>
                         <p><strong>Ocupación:</strong> <span id="socio-ocupacion">{{ socio.ocupacion or 'No registrada' }}</span></p>
                     </div>
                 </div>
@@ -230,7 +230,7 @@ const sociosData = [
         cedula: "{{ socio_item.cedula }}",
         telefono: "{{ socio_item.telefono or '' }}",
         email: "{{ socio_item.email or '' }}",
-        fecha_nacimiento: "{{ socio_item.fecha_nacimiento.strftime('%d/%m/%Y') if socio_item.fecha_nacimiento else '' }}",
+        fecha_nacimiento: "{{ socio_item.fecha_nacimiento | fecha_colombia_corta if socio_item.fecha_nacimiento else '' }}",
         ocupacion: "{{ socio_item.ocupacion or '' }}",
         capital_actual: {{ socio_item.capital_actual }}
     }{% if not loop.last %},{% endif %}

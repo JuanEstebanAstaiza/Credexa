@@ -91,7 +91,7 @@
                                 <h4 class="text-info">
                                     <i class="fas fa-clock"></i>
                                 </h4>
-                                <p class="text-muted">Último acceso: {{ user.ultimo_login.strftime('%d/%m/%Y %H:%M') if user.ultimo_login else 'Nunca' }}</p>
+                                <p class="text-muted">Último acceso: {{ user.ultimo_login | fecha_colombia if user.ultimo_login else 'Nunca' }}</p>
                             </div>
                         </div>
                     </div>

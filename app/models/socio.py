@@ -45,13 +45,13 @@ class Socio(Base):
     @property
     def capital_disponible(self) -> float:
         """Calcular capital disponible (capital_actual - capital prestado)"""
-        capital_prestado = sum(pago.monto for pago in self.pagos_socio if pago.tipo == "prestamo")
+        capital_prestado = sum(float(pago.monto) for pago in self.pagos_socio if pago.tipo == "prestamo")
         return float(self.capital_actual) - capital_prestado
 
     @property
     def total_invertido(self) -> float:
         """Calcular total invertido (prestado a la empresa/clientes)"""
-        return sum(pago.monto for pago in self.pagos_socio if pago.tipo == "prestamo")
+        return sum(float(pago.monto) for pago in self.pagos_socio if pago.tipo == "prestamo")
 
     # Relaciones
     prestamos = relationship("Prestamo", back_populates="socio", cascade="all, delete-orphan")

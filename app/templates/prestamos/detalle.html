@@ -84,11 +84,11 @@
                 <div class="row">
                     <div class="col-md-6">
                         <h6>Fecha de Inicio</h6>
-                        <p class="mb-3">{{ prestamo.fecha_inicio.strftime('%d/%m/%Y') }}</p>
+                        <p class="mb-3">{{ prestamo.fecha_inicio | fecha_colombia_corta }}</p>
                     </div>
                     <div class="col-md-6">
                         <h6>Fecha de Creación</h6>
-                        <p class="mb-3">{{ prestamo.creado_en.strftime('%d/%m/%Y %H:%M') }}</p>
+                        <p class="mb-3">{{ prestamo.creado_en | fecha_colombia }}</p>
                     </div>
                 </div>
 

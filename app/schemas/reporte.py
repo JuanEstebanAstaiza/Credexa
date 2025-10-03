@@ -16,6 +16,8 @@ class ReportePagoFiltro(BaseModel):
     metodo_pago: Optional[str] = None
     prestamo_id: Optional[int] = None
     cliente_id: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    cliente_cedula: Optional[str] = None
     monto_min: Optional[Decimal] = None
     monto_max: Optional[Decimal] = None
 
@@ -42,6 +44,9 @@ class ReporteMorosoFiltro(BaseModel):
     """Filtros para reportes de clientes morosos"""
     dias_mora_min: Optional[int] = Field(default=1, ge=1)
     monto_min: Optional[Decimal] = Field(default=None, ge=0)
+    cliente_id: Optional[int] = None
+    cliente_nombre: Optional[str] = None
+    cliente_cedula: Optional[str] = None
 
 
 class ReportePago(BaseModel):

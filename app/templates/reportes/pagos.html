@@ -61,6 +61,16 @@
                                 <option value="tarjeta">Tarjeta</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-md-3">
+                            <label for="cliente_nombre" class="form-label">Nombre del Cliente</label>
+                            <input type="text" class="form-control" id="cliente_nombre" placeholder="Buscar por nombre...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="cliente_cedula" class="form-label">Cédula del Cliente</label>
+                            <input type="text" class="form-control" id="cliente_cedula" placeholder="Buscar por cédula...">
+                        </div>
                         <div class="col-md-2">
                             <label for="monto_min" class="form-label">Monto Mínimo</label>
                             <input type="number" class="form-control" id="monto_min" min="0" step="1000" placeholder="0">
@@ -268,9 +278,17 @@ document.getElementById('form-filtros').addEventListener('submit', async functio
     };
 
     // Agregar filtros opcionales solo si tienen valor
+    const clienteNombre = document.getElementById('cliente_nombre').value;
+    const clienteCedula = document.getElementById('cliente_cedula').value;
     const montoMin = document.getElementById('monto_min').value;
     const montoMax = document.getElementById('monto_max').value;
 
+    if (clienteNombre && clienteNombre.trim() !== '') {
+        filtros.cliente_nombre = clienteNombre.trim();
+    }
+    if (clienteCedula && clienteCedula.trim() !== '') {
+        filtros.cliente_cedula = clienteCedula.trim();
+    }
     if (montoMin && montoMin.trim() !== '') {
         filtros.monto_min = parseFloat(montoMin);
     }
@@ -322,9 +340,17 @@ async function generarReporteRapido() {
     };
 
     // Agregar filtros opcionales solo si tienen valor
+    const clienteNombre = document.getElementById('cliente_nombre').value;
+    const clienteCedula = document.getElementById('cliente_cedula').value;
     const montoMin = document.getElementById('monto_min').value;
     const montoMax = document.getElementById('monto_max').value;
 
+    if (clienteNombre && clienteNombre.trim() !== '') {
+        filtros.cliente_nombre = clienteNombre.trim();
+    }
+    if (clienteCedula && clienteCedula.trim() !== '') {
+        filtros.cliente_cedula = clienteCedula.trim();
+    }
     if (montoMin && montoMin.trim() !== '') {
         filtros.monto_min = parseFloat(montoMin);
     }

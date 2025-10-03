@@ -35,14 +35,22 @@
                 <form id="form-filtros">
                     <div class="row">
                         <div class="col-md-3">
+                            <label for="cliente_nombre" class="form-label">Nombre del Cliente</label>
+                            <input type="text" class="form-control" id="cliente_nombre" placeholder="Buscar por nombre...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="cliente_cedula" class="form-label">Cédula del Cliente</label>
+                            <input type="text" class="form-control" id="cliente_cedula" placeholder="Buscar por cédula...">
+                        </div>
+                        <div class="col-md-2">
                             <label for="dias_mora_min" class="form-label">Días de Mora Mínimos</label>
                             <input type="number" class="form-control" id="dias_mora_min" min="1" value="1">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label for="monto_min" class="form-label">Monto Mínimo (COP)</label>
                             <input type="number" class="form-control" id="monto_min" min="0" step="1000">
                         </div>
-                        <div class="col-md-3 d-flex align-items-end">
+                        <div class="col-md-2 d-flex align-items-end">
                             <button type="submit" class="btn btn-warning w-100">
                                 <i class="fas fa-search"></i>
                                 Generar Reporte
@@ -212,9 +220,18 @@ document.getElementById('form-filtros').addEventListener('submit', async functio
     e.preventDefault();
 
     const filtros = {
+        cliente_nombre: document.getElementById('cliente_nombre').value.trim(),
+        cliente_cedula: document.getElementById('cliente_cedula').value.trim(),
         dias_mora_min: parseInt(document.getElementById('dias_mora_min').value) || 1,
         monto_min: parseFloat(document.getElementById('monto_min').value) || 0
     };
+
+    // Remover campos vacíos
+    Object.keys(filtros).forEach(key => {
+        if (filtros[key] === '' || filtros[key] === 0) {
+            delete filtros[key];
+        }
+    });
 
     currentFilters = filtros;
     await generarReporteMorosos(filtros);

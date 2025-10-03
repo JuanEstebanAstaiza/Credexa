@@ -92,6 +92,7 @@
                                     name="monto"
                                     required
                                     min="100000"
+                                    max="999999999"
                                     step="10000"
                                     value="{{ prestamo.monto if prestamo else '' }}"
                                     placeholder="1000000"
@@ -364,7 +365,14 @@ document.addEventListener('DOMContentLoaded', function() {
     montoInput.addEventListener('input', function() {
         let value = this.value.replace(/\D/g, '');
         if (value) {
-            this.value = parseInt(value).toLocaleString('es-CO');
+            // Usar Number() en lugar de parseInt() para manejar números grandes
+            let numValue = Number(value);
+            if (!isNaN(numValue) && numValue <= 999999999) {
+                this.value = numValue.toLocaleString('es-CO');
+            } else if (numValue > 999999999) {
+                // Para números muy grandes, mostrar sin formateo
+                this.value = value;
+            }
         }
     });
 
@@ -413,10 +421,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // Función para validar que el monto no exceda el capital del socio
     function validarMontoVsCapital() {
         const selectedOption = socioSelect.options[socioSelect.selectedIndex];
-        const monto = parseFloat(montoPrestamoInput.value.replace(/\D/g, '')) || 0;
+        const monto = Number(montoPrestamoInput.value.replace(/\D/g, '')) || 0;
 
         if (selectedOption && selectedOption.value && monto > 0) {
-            const capital = parseFloat(selectedOption.getAttribute('data-capital')) || 0;
+            const capital = Number(selectedOption.getAttribute('data-capital')) || 0;
             if (monto > capital) {
                 Utils.showError(`El monto solicitado (${Utils.formatCurrency(monto)}) excede el capital disponible del socio (${Utils.formatCurrency(capital)})`);
                 montoPrestamoInput.setCustomValidity('Monto excede capital disponible');

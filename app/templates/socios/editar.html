@@ -1,0 +1,315 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h1>
+                    <i class="fas fa-user-edit"></i>
+                    {{ title }}
+                </h1>
+                <p class="text-muted mb-0">Modificar información del socio prestamista</p>
+            </div>
+            <div>
+                <a href="/socios/{{ socio.id }}/detalle" class="btn btn-info me-2">
+                    <i class="fas fa-eye"></i>
+                    Ver Detalle
+                </a>
+                <a href="/socios/lista" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Volver
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-user-edit"></i>
+                    Información del Socio
+                </h5>
+            </div>
+            <div class="card-body">
+                <form id="form-socio">
+                    <!-- Información Personal -->
+                    <h6 class="text-primary mb-3">
+                        <i class="fas fa-id-card"></i>
+                        Información Personal
+                    </h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="nombre_completo" class="form-label">
+                                Nombre Completo <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="nombre_completo" name="nombre_completo"
+                                   value="{{ socio.nombre_completo }}" required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese el nombre completo.
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="cedula" class="form-label">
+                                Cédula <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="cedula" name="cedula"
+                                   value="{{ socio.cedula }}"
+                                   pattern="[0-9]{5,20}" required>
+                            <div class="invalid-feedback">
+                                Por favor ingrese una cédula válida (solo números, 5-20 dígitos).
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="telefono" class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" id="telefono" name="telefono"
+                                   value="{{ socio.telefono or '' }}">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="email" class="form-label">Correo Electrónico</label>
+                            <input type="email" class="form-control" id="email" name="email"
+                                   value="{{ socio.email or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="fecha_nacimiento" class="form-label">Fecha de Nacimiento</label>
+                            <input type="date" class="form-control" id="fecha_nacimiento" name="fecha_nacimiento"
+                                   value="{% if socio.fecha_nacimiento %}{{ socio.fecha_nacimiento.strftime('%Y-%m-%d') }}{% endif %}">
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="ocupacion" class="form-label">Ocupación</label>
+                            <input type="text" class="form-control" id="ocupacion" name="ocupacion"
+                                   value="{{ socio.ocupacion or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="direccion" class="form-label">Dirección</label>
+                        <textarea class="form-control" id="direccion" name="direccion" rows="2">{{ socio.direccion or '' }}</textarea>
+                    </div>
+
+                    <!-- Información Financiera -->
+                    <h6 class="text-success mb-3 mt-4">
+                        <i class="fas fa-dollar-sign"></i>
+                        Información Financiera
+                    </h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="capital_inicial" class="form-label">
+                                Capital Inicial <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="capital_inicial"
+                                       name="capital_inicial" min="0" step="1000"
+                                       value="{{ socio.capital_inicial }}" required>
+                            </div>
+                            <div class="invalid-feedback">
+                                Por favor ingrese el capital inicial (mínimo $0).
+                            </div>
+                            <small class="form-text text-muted">
+                                Monto inicial que aporta el socio a la empresa
+                            </small>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="porcentaje_participacion" class="form-label">
+                                % Participación en Ganancias
+                            </label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="porcentaje_participacion"
+                                       name="porcentaje_participacion" min="0" max="100" step="0.01"
+                                       value="{{ socio.porcentaje_participacion }}">
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="form-text text-muted">
+                                Porcentaje de participación en las utilidades de la empresa
+                            </small>
+                        </div>
+                    </div>
+
+                    <!-- Información Adicional -->
+                    <h6 class="text-info mb-3 mt-4">
+                        <i class="fas fa-info-circle"></i>
+                        Información Adicional
+                    </h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="ingresos_mensuales" class="form-label">Ingresos Mensuales</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="ingresos_mensuales"
+                                       name="ingresos_mensuales" min="0" step="10000"
+                                       value="{% if socio.ingresos_mensuales %}{{ socio.ingresos_mensuales }}{% endif %}">
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <label for="activo" class="form-label">Estado</label>
+                            <select class="form-select" id="activo" name="activo">
+                                <option value="1" {% if socio.activo %}selected{% endif %}>Activo</option>
+                                <option value="0" {% if not socio.activo %}selected{% endif %}>Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="referencias_personales" class="form-label">Referencias Personales</label>
+                        <textarea class="form-control" id="referencias_personales"
+                                  name="referencias_personales" rows="2"
+                                  placeholder="Nombres y teléfonos de referencias...">{{ socio.referencias_personales or '' }}</textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="notas" class="form-label">Notas</label>
+                        <textarea class="form-control" id="notas" name="notas" rows="2"
+                                  placeholder="Observaciones adicionales...">{{ socio.notas or '' }}</textarea>
+                    </div>
+
+                    <!-- Botones -->
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end mt-4">
+                        <a href="/socios/{{ socio.id }}/detalle" class="btn btn-secondary me-md-2">
+                            <i class="fas fa-times"></i>
+                            Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i>
+                            Actualizar Socio
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('form-socio').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    if (!this.checkValidity()) {
+        this.classList.add('was-validated');
+        return;
+    }
+
+    try {
+        // Mostrar loading
+        const submitBtn = this.querySelector('button[type="submit"]');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Actualizando...';
+        submitBtn.disabled = true;
+
+        // Recopilar datos del formulario
+        const formData = new FormData(this);
+        const socioData = {};
+
+        for (let [key, value] of formData.entries()) {
+            if (value.trim() !== '') {
+                // Convertir tipos numéricos
+                if (['capital_inicial', 'porcentaje_participacion', 'ingresos_mensuales', 'activo'].includes(key)) {
+                    socioData[key] = key === 'activo' ? parseInt(value) : parseFloat(value);
+                } else {
+                    socioData[key] = value;
+                }
+            }
+        }
+
+        // Actualizar socio
+        const response = await Utils.ajax(`/api/socios/{{ socio.id }}`, {
+            method: 'PUT',
+            body: JSON.stringify(socioData)
+        });
+
+        Utils.showSuccess('Socio actualizado exitosamente');
+        setTimeout(() => {
+            window.location.href = `/socios/{{ socio.id }}/detalle`;
+        }, 1500);
+
+    } catch (error) {
+        console.error('Error actualizando socio:', error);
+        Utils.showError(error.message || 'Error al actualizar el socio');
+
+        // Restaurar botón
+        const submitBtn = this.querySelector('button[type="submit"]');
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Actualizar Socio';
+        submitBtn.disabled = false;
+    }
+});
+
+// Validación de cédula única
+document.getElementById('cedula').addEventListener('blur', async function() {
+    const cedula = this.value.trim();
+    const cedulaActual = '{{ socio.cedula }}';
+
+    if (cedula.length < 5) return;
+
+    // Si la cédula no cambió, no validar
+    if (cedula === cedulaActual) {
+        this.setCustomValidity('');
+        this.classList.remove('is-invalid');
+        return;
+    }
+
+    try {
+        const response = await Utils.ajax(`/api/socios?cedula=${cedula}`);
+        if (response.length > 0) {
+            this.setCustomValidity('Ya existe un socio con esta cédula');
+            this.classList.add('is-invalid');
+        } else {
+            this.setCustomValidity('');
+            this.classList.remove('is-invalid');
+        }
+    } catch (error) {
+        console.error('Error validando cédula:', error);
+    }
+});
+
+// Formatear números como moneda
+document.getElementById('capital_inicial').addEventListener('blur', function() {
+    const value = parseFloat(this.value);
+    if (!isNaN(value) && value >= 0) {
+        this.value = value;
+    }
+});
+
+document.getElementById('ingresos_mensuales').addEventListener('blur', function() {
+    const value = parseFloat(this.value);
+    if (!isNaN(value) && value >= 0) {
+        this.value = value;
+    }
+});
+
+// Inicializar validación de Bootstrap
+document.addEventListener('DOMContentLoaded', function() {
+    // Configurar validación de formularios
+    const forms = document.querySelectorAll('.needs-validation');
+    Array.prototype.slice.call(forms).forEach(function(form) {
+        form.addEventListener('submit', function(event) {
+            if (!form.checkValidity()) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            form.classList.add('was-validated');
+        }, false);
+    });
+});
+</script>
+{% endblock %}

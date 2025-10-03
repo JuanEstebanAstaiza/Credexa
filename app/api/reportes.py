@@ -57,6 +57,10 @@ def _get_pagos_data(filtros: ReportePagoFiltro, db: Session, current_user: Usuar
         query = query.filter(Pago.prestamo_id == filtros.prestamo_id)
     if filtros.cliente_id:
         query = query.filter(Cliente.id == filtros.cliente_id)
+    if filtros.cliente_nombre and filtros.cliente_nombre.strip():
+        query = query.filter(Cliente.nombre_completo.ilike(f"%{filtros.cliente_nombre}%"))
+    if filtros.cliente_cedula and filtros.cliente_cedula.strip():
+        query = query.filter(Cliente.cedula.ilike(f"%{filtros.cliente_cedula}%"))
     if filtros.monto_min:
         query = query.filter(Pago.monto_pagado >= filtros.monto_min)
     if filtros.monto_max:
@@ -158,6 +162,14 @@ async def reporte_clientes_morosos(
             monto_mora = prestamo.saldo_pendiente
 
         # Aplicar filtros
+        if filtros.cliente_id and cliente.id != filtros.cliente_id:
+            continue
+        if filtros.cliente_nombre and filtros.cliente_nombre.strip():
+            if filtros.cliente_nombre.lower() not in cliente.nombre_completo.lower():
+                continue
+        if filtros.cliente_cedula and filtros.cliente_cedula.strip():
+            if filtros.cliente_cedula not in cliente.cedula:
+                continue
         if filtros.dias_mora_min and dias_mora < filtros.dias_mora_min:
             continue
         if filtros.monto_min and monto_mora < filtros.monto_min:

@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 import uvicorn
 
 from app.core.config import settings
-from app.core.database import engine, get_db, create_tables
+from app.core.database import engine, get_db, create_tables, convertir_a_colombia
 from app.api.api import api_router
 from app.core.security import get_current_user, get_current_user_optional, get_current_admin_user
 from app.models.user import Usuario
@@ -43,6 +43,24 @@ app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 # Configurar templates
 templates = Jinja2Templates(directory="app/templates")
+
+# Agregar filtros personalizados para templates
+def fecha_colombia(dt):
+    """Convierte una fecha UTC a zona horaria de Colombia y la formatea"""
+    if dt is None:
+        return ""
+    colombia_dt = convertir_a_colombia(dt)
+    return colombia_dt.strftime('%d/%m/%Y %H:%M')
+
+def fecha_colombia_corta(dt):
+    """Convierte una fecha UTC a zona horaria de Colombia (solo fecha)"""
+    if dt is None:
+        return ""
+    colombia_dt = convertir_a_colombia(dt)
+    return colombia_dt.strftime('%d/%m/%Y')
+
+templates.env.filters['fecha_colombia'] = fecha_colombia
+templates.env.filters['fecha_colombia_corta'] = fecha_colombia_corta
 
 # Incluir routers
 app.include_router(api_router, prefix="/api")

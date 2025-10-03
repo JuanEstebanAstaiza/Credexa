@@ -68,7 +68,7 @@
                     </div>
                     <div class="col-md-6">
                         <h6>Fecha del Pago</h6>
-                        <p class="mb-3">{{ pago.fecha_pago.strftime('%d/%m/%Y') }}</p>
+                        <p class="mb-3">{{ pago.fecha_pago | fecha_colombia_corta }}</p>
 
                         <h6>Método de Pago</h6>
                         <p class="mb-3">
@@ -97,7 +97,7 @@
                     </div>
                     <div class="col-md-6">
                         <h6>Fecha de Registro</h6>
-                        <p class="mb-3">{{ pago.creado_en.strftime('%d/%m/%Y %H:%M') }}</p>
+                        <p class="mb-3">{{ pago.creado_en | fecha_colombia }}</p>
                     </div>
                 </div>
 

@@ -47,27 +47,31 @@ async def crear_cliente(
 async def listar_clientes(
     skip: int = Query(0, ge=0),
     limit: int = Query(10, ge=1, le=100),
-    nombre: Optional[str] = None,
-    cedula: Optional[str] = None,
-    telefono: Optional[str] = None,
-    email: Optional[str] = None,
-    activo: Optional[int] = None,
+    nombre: Optional[str] = Query(None),
+    cedula: Optional[str] = Query(None),
+    telefono: Optional[str] = Query(None),
+    email: Optional[str] = Query(None),
+    activo: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: Usuario = Depends(get_current_user)
 ):
     """Listar clientes con filtros y paginación"""
     # Construir filtros
     filtros = []
-    if nombre:
+    if nombre and nombre.strip():
         filtros.append(Cliente.nombre_completo.ilike(f"%{nombre}%"))
-    if cedula:
+    if cedula and cedula.strip():
         filtros.append(Cliente.cedula.ilike(f"%{cedula}%"))
-    if telefono:
+    if telefono and telefono.strip():
         filtros.append(Cliente.telefono.ilike(f"%{telefono}%"))
-    if email:
+    if email and email.strip():
         filtros.append(Cliente.email.ilike(f"%{email}%"))
-    if activo is not None:
-        filtros.append(Cliente.activo == activo)
+    if activo and activo.strip():
+        try:
+            activo_int = int(activo)
+            filtros.append(Cliente.activo == activo_int)
+        except ValueError:
+            pass  # Ignorar si no es un número válido
 
     # Consulta base
     query = db.query(Cliente)

@@ -6,6 +6,7 @@ import os
 from typing import List
 import secrets
 from pathlib import Path
+import pytz
 
 class Settings:
     """Configuración de la aplicación"""
@@ -22,6 +23,9 @@ class Settings:
     APP_NAME: str = "Credexa"
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = True
+
+    # Zona horaria (Colombia)
+    TIMEZONE: str = "America/Bogota"
 
     # Configuración de empresa (por defecto)
     EMPRESA_NOMBRE: str = "Credexa"
