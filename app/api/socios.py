@@ -12,7 +12,7 @@ from sqlalchemy import or_, and_, func
 from decimal import Decimal
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_admin_user
+from app.core.security import get_current_user, get_current_admin_user, get_current_tenant
 from app.models.socio import Socio
 from app.models.pago_socio import PagoSocio
 from app.models.user import Usuario as UsuarioModel
@@ -42,19 +42,25 @@ templates = Jinja2Templates(directory="app/templates")
 async def crear_socio(
     socio: SocioCreate,
     db: Session = Depends(get_db),
-    current_user: UsuarioModel = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Crear un nuevo socio (solo administradores)"""
-    # Verificar que la cédula no esté duplicada
-    db_socio = db.query(Socio).filter(Socio.cedula == socio.cedula).first()
+    # Verificar que la cédula no esté duplicada en esta empresa
+    db_socio = db.query(Socio).filter(
+        Socio.cedula == socio.cedula,
+        Socio.empresa_id == tenant.id
+    ).first()
     if db_socio:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un socio con esta cédula"
+            detail="Ya existe un socio con esta cédula en su empresa"
         )
 
-    # Crear el socio
-    db_socio = Socio(**socio.model_dump())
+    # Crear el socio con empresa_id
+    socio_dict = socio.model_dump()
+    socio_dict["empresa_id"] = tenant.id
+    db_socio = Socio(**socio_dict)
     db.add(db_socio)
     db.commit()
     db.refresh(db_socio)
@@ -67,13 +73,14 @@ async def listar_socios(
     limit: int = Query(100, ge=1, le=1000),
     filtro: Optional[SocioFiltro] = None,
     db: Session = Depends(get_db),
-    current_user: UsuarioModel = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Listar socios con filtros opcionales"""
     # Endpoint simplificado para debugging
     try:
-        # Solo devolver socios básicos sin filtros por ahora
-        socios = db.query(Socio).limit(10).all()
+        # Solo devolver socios básicos sin filtros por ahora, filtrados por empresa
+        socios = db.query(Socio).filter(Socio.empresa_id == tenant.id).limit(10).all()
 
         # Convertir manualmente para evitar problemas de Pydantic
         result = []

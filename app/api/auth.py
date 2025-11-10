@@ -58,10 +58,16 @@ async def login(
     user.ultimo_login = func.now()
     db.commit()
 
-    # Crear token de acceso
+    # Crear token de acceso con información multi-tenant
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
-        data={"sub": str(user.id)}, expires_delta=access_token_expires
+        data={
+            "sub": str(user.id),
+            "tenant_id": user.empresa_id,  # Incluir tenant_id en el token
+            "username": user.username,
+            "role": user.rol.nombre if user.rol else "user"
+        },
+        expires_delta=access_token_expires
     )
 
     # Establecer cookie con el token
@@ -710,9 +716,10 @@ async def verificar_admin(
     from datetime import datetime, timedelta
     from app.core.security import create_access_token
 
-    # Crear token con expiración corta (15 minutos)
+    # Crear token con expiración corta (15 minutos) e información multi-tenant
     token_data = {
         "sub": str(usuario.id),
+        "tenant_id": usuario.empresa_id,  # Incluir tenant_id
         "username": usuario.username,
         "role": "admin",
         "verified": True,

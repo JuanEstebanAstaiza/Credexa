@@ -6,6 +6,7 @@ from app.core.database import Base
 class Documento(Base):
     __tablename__ = "documentos"
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)  # Multi-tenant
     nombre_original = Column(String(255), nullable=False)
     nombre_archivo = Column(String(255), nullable=False, index=True)  # Nombre en el sistema de archivos
     ruta_archivo = Column(String(1000), nullable=False)  # Ruta completa del archivo
@@ -19,5 +20,6 @@ class Documento(Base):
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relaciones
+    empresa = relationship("Empresa", back_populates="documentos")  # Multi-tenant
     carpeta = relationship("Carpeta", back_populates="documentos")
     usuario_subio = relationship("Usuario", back_populates="documentos_subidos")

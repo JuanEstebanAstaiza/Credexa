@@ -34,6 +34,7 @@ class Usuario(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     rol_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)  # Multi-tenant: cada usuario pertenece a una empresa
     activo = Column(Boolean, default=True, nullable=False)
     ultimo_login = Column(DateTime(timezone=True), nullable=True)
     creado_en = Column(DateTime(timezone=True), server_default=func.now())
@@ -41,6 +42,7 @@ class Usuario(Base):
 
     # Relaciones
     rol = relationship("Rol", back_populates="usuarios")
+    empresa = relationship("Empresa", back_populates="usuarios")  # Nueva relación multi-tenant
     pagos_socio = relationship("PagoSocio", back_populates="usuario", cascade="all, delete-orphan")
     documentos_subidos = relationship("Documento", back_populates="usuario_subio")
     carpetas_creadas = relationship("Carpeta", back_populates="usuario_creador")
@@ -49,8 +51,13 @@ class Usuario(Base):
 
     @property
     def is_admin(self) -> bool:
-        """Verificar si el usuario es administrador"""
+        """Verificar si el usuario es administrador de su empresa"""
         return self.rol.nombre.lower() == "admin"
+
+    @property
+    def is_super_admin(self) -> bool:
+        """Verificar si el usuario es super-administrador de toda la plataforma"""
+        return self.rol.nombre.lower() == "super_admin"
 
     @property
     def is_digitador(self) -> bool:
@@ -58,4 +65,4 @@ class Usuario(Base):
         return self.rol.nombre.lower() == "digitador"
 
     def __repr__(self):
-        return f"<Usuario(id={self.id}, username='{self.username}', rol='{self.rol.nombre}')>"
+        return f"<Usuario(id={self.id}, username='{self.username}', rol='{self.rol.nombre}', empresa='{self.empresa.nombre if self.empresa else 'N/A'}')>"

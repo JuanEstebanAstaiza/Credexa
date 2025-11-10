@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Suscripciones - Super Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/admin/dashboard">
+                <i class="fas fa-crown"></i> Credexa SaaS - Panel de Administración
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/dashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/empresas">
+                            <i class="fas fa-building"></i> Empresas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/planes">
+                            <i class="fas fa-tags"></i> Planes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/admin/suscripciones">
+                            <i class="fas fa-credit-card"></i> Suscripciones
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-shield"></i> Super Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-credit-card"></i> Gestión de Suscripciones</h2>
+                <p class="text-muted">Administra las suscripciones activas de las empresas</p>
+            </div>
+            <a href="/admin/suscripciones/crear" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nueva Suscripción
+            </a>
+        </div>
+
+        <!-- Estadísticas de Suscripciones -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">
+                            <i class="fas fa-check-circle"></i> Activas
+                        </h5>
+                        <h3 class="mb-0" id="suscripcionesActivas">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">
+                            <i class="fas fa-clock"></i> Próximas a Vencer
+                        </h5>
+                        <h3 class="mb-0" id="suscripcionesVenciendo">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-danger">
+                            <i class="fas fa-times-circle"></i> Vencidas
+                        </h5>
+                        <h3 class="mb-0" id="suscripcionesVencidas">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">
+                            <i class="fas fa-dollar-sign"></i> Ingresos Totales
+                        </h5>
+                        <h3 class="mb-0" id="ingresosTotales">$0</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <select class="form-select" id="filtroEstado">
+                            <option value="">Todos los estados</option>
+                            <option value="activa">Activa</option>
+                            <option value="vencida">Vencida</option>
+                            <option value="cancelada">Cancelada</option>
+                            <option value="pendiente">Pendiente</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="filtroTipo">
+                            <option value="">Todos los tipos</option>
+                            <option value="mensual">Mensual</option>
+                            <option value="anual">Anual</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="text" class="form-control" id="filtroEmpresa" placeholder="Buscar por empresa...">
+                    </div>
+                    <div class="col-md-3">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary" onclick="aplicarFiltros()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="limpiarFiltros()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Suscripciones -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Lista de Suscripciones
+                    <span class="badge bg-primary ms-2" id="totalSuscripciones">0</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="suscripcionesTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Empresa</th>
+                                <th>Plan</th>
+                                <th>Estado</th>
+                                <th>Tipo</th>
+                                <th>Fecha Inicio</th>
+                                <th>Próximo Pago</th>
+                                <th>Monto</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="suscripcionesTableBody">
+                            <!-- Se llena dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                <nav id="paginacion" class="mt-3">
+                    <!-- Se genera dinámicamente -->
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para confirmar acciones -->
+    <div class="modal fade" id="confirmarModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmarModalTitle">Confirmar Acción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmarModalBody">
+                    ¿Está seguro de realizar esta acción?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmarBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+
+    <script>
+        // Variables globales
+        let suscripciones = [];
+        let filtros = {
+            estado: '',
+            tipo: '',
+            empresa: '',
+            pagina: 1,
+            limite: 20
+        };
+
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarSuscripciones();
+            cargarEstadisticas();
+        });
+
+        // Cargar estadísticas
+        async function cargarEstadisticas() {
+            try {
+                const response = await fetch('/api/admin/suscripciones/stats/general');
+                if (response.ok) {
+                    const stats = await response.json();
+
+                    document.getElementById('suscripcionesActivas').textContent = stats.suscripciones_activas || 0;
+                    document.getElementById('suscripcionesVenciendo').textContent = stats.suscripciones_venciendo || 0;
+                    document.getElementById('suscripcionesVencidas').textContent = stats.suscripciones_vencidas || 0;
+                    document.getElementById('ingresosTotales').textContent =
+                        new Intl.NumberFormat('es-CO', {
+                            style: 'currency',
+                            currency: 'COP'
+                        }).format(stats.ingresos_totales || 0);
+                }
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+            }
+        }
+
+        // Cargar suscripciones
+        async function cargarSuscripciones() {
+            try {
+                const params = new URLSearchParams();
+                if (filtros.estado) params.append('estado', filtros.estado);
+                if (filtros.tipo) params.append('tipo', filtros.tipo);
+                if (filtros.empresa) params.append('empresa', filtros.empresa);
+
+                const response = await fetch(`/api/admin/suscripciones/?${params}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    suscripciones = data;
+
+                    mostrarSuscripciones(suscripciones);
+                    actualizarContadores(suscripciones);
+                } else {
+                    console.warn('No se pudieron cargar suscripciones');
+                    mostrarSuscripciones([]);
+                }
+            } catch (error) {
+                console.error('Error cargando suscripciones:', error);
+                mostrarAlerta('error', 'Error al cargar suscripciones');
+            }
+        }
+
+        // Mostrar suscripciones en la tabla
+        function mostrarSuscripciones(suscripciones) {
+            const tbody = document.getElementById('suscripcionesTableBody');
+            tbody.innerHTML = '';
+
+            if (suscripciones.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <i class="fas fa-credit-card fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No se encontraron suscripciones</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            for (const suscripcion of suscripciones) {
+                const fechaInicio = new Date(suscripcion.fecha_inicio).toLocaleDateString('es-ES');
+                const proximoPago = suscripcion.fecha_proximo_pago ?
+                    new Date(suscripcion.fecha_proximo_pago).toLocaleDateString('es-ES') : 'N/A';
+
+                const estadoClasses = {
+                    'activa': 'bg-success',
+                    'vencida': 'bg-danger',
+                    'cancelada': 'bg-secondary',
+                    'pendiente': 'bg-warning'
+                };
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div>
+                            <strong>${suscripcion.empresa?.nombre || 'Empresa sin nombre'}</strong>
+                            <br>
+                            <small class="text-muted">${suscripcion.empresa?.email || ''}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <div>
+                            <strong>${suscripcion.plan?.nombre || 'Plan sin nombre'}</strong>
+                            <br>
+                            <small class="text-muted">${suscripcion.plan?.slug || ''}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="badge ${estadoClasses[suscripcion.estado] || 'bg-secondary'}">
+                            ${suscripcion.estado.charAt(0).toUpperCase() + suscripcion.estado.slice(1)}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="badge bg-info">
+                            ${suscripcion.tipo === 'mensual' ? 'Mensual' : 'Anual'}
+                        </span>
+                    </td>
+                    <td>${fechaInicio}</td>
+                    <td>${proximoPago}</td>
+                    <td>
+                        <strong class="text-primary">
+                            ${new Intl.NumberFormat('es-CO', {
+                                style: 'currency',
+                                currency: 'COP'
+                            }).format(suscripcion.monto_pagado)}
+                        </strong>
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-info" onclick="verSuscripcion(${suscripcion.id})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-outline-primary" onclick="editarSuscripcion(${suscripcion.id})" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-warning" onclick="renovarSuscripcion(${suscripcion.id})" title="Renovar">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="cancelarSuscripcion(${suscripcion.id})" title="Cancelar">
+                                <i class="fas fa-ban"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        // Actualizar contadores
+        function actualizarContadores(suscripciones) {
+            document.getElementById('totalSuscripciones').textContent = suscripciones.length;
+        }
+
+        // Aplicar filtros
+        function aplicarFiltros() {
+            filtros.estado = document.getElementById('filtroEstado').value;
+            filtros.tipo = document.getElementById('filtroTipo').value;
+            filtros.empresa = document.getElementById('filtroEmpresa').value;
+            filtros.pagina = 1;
+
+            cargarSuscripciones();
+        }
+
+        // Limpiar filtros
+        function limpiarFiltros() {
+            document.getElementById('filtroEstado').value = '';
+            document.getElementById('filtroTipo').value = '';
+            document.getElementById('filtroEmpresa').value = '';
+
+            filtros = {
+                estado: '',
+                tipo: '',
+                empresa: '',
+                pagina: 1,
+                limite: 20
+            };
+
+            cargarSuscripciones();
+        }
+
+        // Ver detalles de suscripción
+        async function verSuscripcion(suscripcionId) {
+            try {
+                const response = await fetch(`/api/admin/suscripciones/${suscripcionId}`);
+                if (response.ok) {
+                    const suscripcion = await response.json();
+                    mostrarDetallesSuscripcion(suscripcion);
+                } else {
+                    mostrarAlerta('error', 'Error al cargar detalles de la suscripción');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarAlerta('error', 'Error al cargar detalles de la suscripción');
+            }
+        }
+
+        // Mostrar detalles de la suscripción en modal
+        function mostrarDetallesSuscripcion(suscripcion) {
+            const caracteristicasHtml = suscripcion.plan ? `
+                <p><strong>Descripción:</strong> ${suscripcion.plan.descripcion || 'Sin descripción'}</p>
+                <p><strong>Límites:</strong></p>
+                <ul class="list-unstyled">
+                    <li>Usuarios: ${suscripcion.plan.max_usuarios}</li>
+                    <li>Clientes: ${suscripcion.plan.max_clientes}</li>
+                    <li>Préstamos: ${suscripcion.plan.max_prestamos_activos}</li>
+                    <li>Almacenamiento: ${suscripcion.plan.almacenamiento_gb}GB</li>
+                </ul>
+            ` : '<p>No hay información del plan</p>';
+
+            const modalHtml = `
+                <div class="modal fade" id="detallesModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-credit-card"></i> Detalles de Suscripción
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Información General</h6>
+                                        <p><strong>Empresa:</strong> ${suscripcion.empresa?.nombre || 'N/A'}</p>
+                                        <p><strong>Plan:</strong> ${suscripcion.plan?.nombre || 'N/A'}</p>
+                                        <p><strong>Estado:</strong>
+                                            <span class="badge ${suscripcion.estado === 'activa' ? 'bg-success' : 'bg-danger'}">
+                                                ${suscripcion.estado.charAt(0).toUpperCase() + suscripcion.estado.slice(1)}
+                                            </span>
+                                        </p>
+                                        <p><strong>Tipo:</strong> ${suscripcion.tipo === 'mensual' ? 'Mensual' : 'Anual'}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Fechas y Pagos</h6>
+                                        <p><strong>Fecha Inicio:</strong> ${new Date(suscripcion.fecha_inicio).toLocaleDateString('es-ES')}</p>
+                                        <p><strong>Fecha Fin:</strong> ${new Date(suscripcion.fecha_fin).toLocaleDateString('es-ES')}</p>
+                                        <p><strong>Próximo Pago:</strong>
+                                            ${suscripcion.fecha_proximo_pago ? new Date(suscripcion.fecha_proximo_pago).toLocaleDateString('es-ES') : 'N/A'}
+                                        </p>
+                                        <p><strong>Monto Pagado:</strong>
+                                            ${new Intl.NumberFormat('es-CO', {
+                                                style: 'currency',
+                                                currency: 'COP'
+                                            }).format(suscripcion.monto_pagado)}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <h6>Información del Plan</h6>
+                                        ${caracteristicasHtml}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <a href="/admin/suscripciones/${suscripcion.id}/editar" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> Editar Suscripción
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+            const modal = new bootstrap.Modal(document.getElementById('detallesModal'));
+            modal.show();
+
+            document.getElementById('detallesModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+
+        // Editar suscripción
+        function editarSuscripcion(suscripcionId) {
+            window.location.href = `/admin/suscripciones/${suscripcionId}/editar`;
+        }
+
+        // Renovar suscripción
+        async function renovarSuscripcion(suscripcionId) {
+            mostrarConfirmacion(
+                'Renovar Suscripción',
+                '¿Está seguro de renovar esta suscripción?',
+                async () => {
+                    try {
+                        const response = await fetch(`/api/admin/suscripciones/${suscripcionId}/renovar`, {
+                            method: 'POST'
+                        });
+
+                        if (response.ok) {
+                            mostrarAlerta('success', 'Suscripción renovada exitosamente');
+                            cargarSuscripciones();
+                        } else {
+                            const error = await response.json();
+                            mostrarAlerta('error', error.detail || 'Error al renovar la suscripción');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        mostrarAlerta('error', 'Error al renovar la suscripción');
+                    }
+                }
+            );
+        }
+
+        // Cancelar suscripción
+        async function cancelarSuscripcion(suscripcionId) {
+            mostrarConfirmacion(
+                'Cancelar Suscripción',
+                '¿Está seguro de cancelar esta suscripción? Esta acción no se puede deshacer.',
+                async () => {
+                    try {
+                        const response = await fetch(`/api/admin/suscripciones/${suscripcionId}/cancelar`, {
+                            method: 'POST'
+                        });
+
+                        if (response.ok) {
+                            mostrarAlerta('success', 'Suscripción cancelada exitosamente');
+                            cargarSuscripciones();
+                        } else {
+                            const error = await response.json();
+                            mostrarAlerta('error', error.detail || 'Error al cancelar la suscripción');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        mostrarAlerta('error', 'Error al cancelar la suscripción');
+                    }
+                }
+            );
+        }
+
+        // Mostrar confirmación
+        function mostrarConfirmacion(titulo, mensaje, callback) {
+            document.getElementById('confirmarModalTitle').textContent = titulo;
+            document.getElementById('confirmarModalBody').textContent = mensaje;
+
+            const confirmarBtn = document.getElementById('confirmarBtn');
+            confirmarBtn.onclick = () => {
+                callback();
+                bootstrap.Modal.getInstance(document.getElementById('confirmarModal')).hide();
+            };
+
+            new bootstrap.Modal(document.getElementById('confirmarModal')).show();
+        }
+
+        // Mostrar alerta
+        function mostrarAlerta(tipo, mensaje) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${tipo === 'error' ? 'danger' : tipo} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${mensaje}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

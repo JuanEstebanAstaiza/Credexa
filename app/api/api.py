@@ -12,6 +12,9 @@ from app.api.configuracion import router as configuracion_router
 from app.api.socios import router as socios_router
 from app.api.backup import router as backup_router
 from app.api.documentos import router as documentos_router
+from app.api.empresas import router as empresas_router
+from app.api.planes_suscripcion import router as planes_suscripcion_router
+from app.api.suscripciones import router as suscripciones_router
 
 api_router = APIRouter()
 
@@ -25,6 +28,9 @@ api_router.include_router(configuracion_router, prefix="/configuracion", tags=["
 api_router.include_router(socios_router, prefix="/socios", tags=["socios"])
 api_router.include_router(backup_router, prefix="/backup", tags=["backup"])
 api_router.include_router(documentos_router, prefix="/documentos", tags=["documentos"])
+api_router.include_router(empresas_router, prefix="/empresas", tags=["empresas"])
+api_router.include_router(planes_suscripcion_router, prefix="/admin", tags=["planes de suscripción"])
+api_router.include_router(suscripciones_router, prefix="/admin", tags=["suscripciones"])
 
 # Aquí se agregarán los routers de otros módulos:
 # api_router.include_router(reportes_router, prefix="/reportes", tags=["reportes"])

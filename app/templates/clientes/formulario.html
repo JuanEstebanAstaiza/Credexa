@@ -335,6 +335,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // Remover formato antes de enviar el formulario
+    document.getElementById('clienteForm').addEventListener('submit', function(e) {
+        const ingresosInput = document.getElementById('ingresos_mensuales');
+        if (ingresosInput.value) {
+            // Remover todos los caracteres no numéricos para enviar solo el número
+            ingresosInput.value = ingresosInput.value.replace(/\D/g, '');
+        }
+    });
+
     // Limitar fecha de nacimiento (no puede ser futura)
     const fechaNacimientoInput = document.getElementById('fecha_nacimiento');
     const today = new Date().toISOString().split('T')[0];

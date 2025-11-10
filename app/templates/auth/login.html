@@ -111,12 +111,26 @@ document.addEventListener('DOMContentLoaded', function() {
         successMessage.classList.add('d-none');
 
         if (xhr.status === 200) {
-            // Login exitoso - redirigir al dashboard
-            successText.textContent = 'Iniciando sesión...';
-            successMessage.classList.remove('d-none');
-            setTimeout(() => {
+            // Login exitoso - obtener información del usuario para redirigir correctamente
+            try {
+                const response = JSON.parse(xhr.responseText);
+                const user = response.user;
+
+                successText.textContent = 'Iniciando sesión...';
+                successMessage.classList.remove('d-none');
+
+                setTimeout(() => {
+                    // Redirigir según el rol del usuario
+                    if (user.is_super_admin) {
+                        window.location.href = '/admin/dashboard';
+                    } else {
+                        window.location.href = '/dashboard';
+                    }
+                }, 1000);
+            } catch (e) {
+                // Fallback si no se puede parsear la respuesta
                 window.location.href = '/dashboard';
-            }, 1000);
+            }
         } else if (xhr.status >= 400) {
             // Error en login
             try {

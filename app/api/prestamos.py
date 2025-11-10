@@ -12,7 +12,7 @@ from sqlalchemy import or_, and_, func
 from decimal import Decimal
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_tenant
 from app.models.user import Usuario
 from app.models.cliente import Cliente
 from app.models.prestamo import Prestamo
@@ -35,15 +35,19 @@ templates = Jinja2Templates(directory="app/templates")
 async def crear_prestamo(
     prestamo_data: PrestamoCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Crear un nuevo préstamo"""
-    # Verificar que el cliente existe y está activo
-    cliente = db.query(Cliente).filter(Cliente.id == prestamo_data.cliente_id).first()
+    # Verificar que el cliente existe, está activo y pertenece a la empresa
+    cliente = db.query(Cliente).filter(
+        Cliente.id == prestamo_data.cliente_id,
+        Cliente.empresa_id == tenant.id
+    ).first()
     if not cliente:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Cliente no encontrado",
+            detail="Cliente no encontrado o no pertenece a su empresa",
         )
 
     if not cliente.is_activo:
@@ -60,11 +64,14 @@ async def crear_prestamo(
                 detail="Debe especificar el socio prestamista cuando el origen es socio",
             )
 
-        socio = db.query(Socio).filter(Socio.id == prestamo_data.socio_id).first()
+        socio = db.query(Socio).filter(
+            Socio.id == prestamo_data.socio_id,
+            Socio.empresa_id == tenant.id
+        ).first()
         if not socio:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="Socio prestamista no encontrado",
+                detail="Socio prestamista no encontrado o no pertenece a su empresa",
             )
 
         if not socio.activo:
@@ -83,6 +90,7 @@ async def crear_prestamo(
     prestamo_activo = db.query(Prestamo).filter(
         and_(
             Prestamo.cliente_id == prestamo_data.cliente_id,
+            Prestamo.empresa_id == tenant.id,
             Prestamo.estado == "activo"
         )
     ).first()
@@ -93,8 +101,10 @@ async def crear_prestamo(
             detail="El cliente ya tiene un préstamo activo",
         )
 
-    # Crear el préstamo
-    db_prestamo = Prestamo(**prestamo_data.dict())
+    # Crear el préstamo con empresa_id
+    prestamo_dict = prestamo_data.dict()
+    prestamo_dict["empresa_id"] = tenant.id
+    db_prestamo = Prestamo(**prestamo_dict)
 
     # Calcular valores automáticos
     db_prestamo.numero_cuotas = db_prestamo.plazo_meses
@@ -163,11 +173,12 @@ async def listar_prestamos(
     monto_min: Optional[Decimal] = None,
     monto_max: Optional[Decimal] = None,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Listar préstamos con filtros y paginación"""
     # Construir filtros
-    filtros = []
+    filtros = [Prestamo.empresa_id == tenant.id]
 
     if cliente_id:
         filtros.append(Prestamo.cliente_id == cliente_id)
@@ -217,14 +228,18 @@ async def listar_prestamos(
 async def obtener_prestamo(
     prestamo_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Obtener un préstamo por ID"""
-    prestamo = db.query(Prestamo).filter(Prestamo.id == prestamo_id).first()
+    prestamo = db.query(Prestamo).filter(
+        Prestamo.id == prestamo_id,
+        Prestamo.empresa_id == tenant.id
+    ).first()
     if not prestamo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Préstamo no encontrado",
+            detail="Préstamo no encontrado o no pertenece a su empresa",
         )
 
     return PrestamoSchema.from_orm_with_calculations(prestamo)
@@ -234,14 +249,18 @@ async def actualizar_prestamo(
     prestamo_id: int,
     prestamo_data: PrestamoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Actualizar un préstamo (solo campos permitidos)"""
-    prestamo = db.query(Prestamo).filter(Prestamo.id == prestamo_id).first()
+    prestamo = db.query(Prestamo).filter(
+        Prestamo.id == prestamo_id,
+        Prestamo.empresa_id == tenant.id
+    ).first()
     if not prestamo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Préstamo no encontrado",
+            detail="Préstamo no encontrado o no pertenece a su empresa",
         )
 
     # Solo permitir actualizar campos que no afecten cálculos financieros
@@ -266,14 +285,18 @@ async def actualizar_prestamo(
 async def eliminar_prestamo(
     prestamo_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Eliminar un préstamo (solo si no tiene pagos)"""
-    prestamo = db.query(Prestamo).filter(Prestamo.id == prestamo_id).first()
+    prestamo = db.query(Prestamo).filter(
+        Prestamo.id == prestamo_id,
+        Prestamo.empresa_id == tenant.id
+    ).first()
     if not prestamo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Préstamo no encontrado",
+            detail="Préstamo no encontrado o no pertenece a su empresa",
         )
 
     # Verificar si tiene pagos directos
@@ -327,22 +350,23 @@ async def eliminar_prestamo(
 @router.get("/estadisticas/general", response_model=EstadisticasPrestamo)
 async def obtener_estadisticas_prestamos(
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Obtener estadísticas generales de préstamos"""
-    # Consultas de agregación
+    # Consultas de agregación filtradas por empresa
     stats = db.query(
         func.count(Prestamo.id).label('total_prestamos'),
         func.sum(Prestamo.monto).label('monto_total_prestado'),
         func.sum(Prestamo.saldo_pendiente).label('monto_total_pendiente'),
         func.avg(Prestamo.tasa_interes).label('promedio_tasa_interes')
-    ).first()
+    ).filter(Prestamo.empresa_id == tenant.id).first()
 
-    # Contar por estado
+    # Contar por estado filtrado por empresa
     estados = db.query(
         Prestamo.estado,
         func.count(Prestamo.id).label('count')
-    ).group_by(Prestamo.estado).all()
+    ).filter(Prestamo.empresa_id == tenant.id).group_by(Prestamo.estado).all()
 
     # Convertir a diccionario
     estados_dict = {estado: count for estado, count in estados}
@@ -351,8 +375,11 @@ async def obtener_estadisticas_prestamos(
     hoy = date.today()
     prestamos_en_mora = 0
 
-    # Para cada préstamo activo, verificar si está en mora
-    prestamos_activos = db.query(Prestamo).filter(Prestamo.estado == "activo").all()
+    # Para cada préstamo activo de la empresa, verificar si está en mora
+    prestamos_activos = db.query(Prestamo).filter(
+        Prestamo.estado == "activo",
+        Prestamo.empresa_id == tenant.id
+    ).all()
 
     for prestamo in prestamos_activos:
         # Obtener última fecha de pago para este préstamo
@@ -391,16 +418,20 @@ async def refinanciar_prestamo(
     prestamo_id: int,
     refinanciacion_data: dict,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Crear una refinanciación de préstamo específico"""
     # Obtener préstamo original
-    prestamo_original = db.query(Prestamo).filter(Prestamo.id == prestamo_id).first()
+    prestamo_original = db.query(Prestamo).filter(
+        Prestamo.id == prestamo_id,
+        Prestamo.empresa_id == tenant.id
+    ).first()
 
     if not prestamo_original:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Préstamo no encontrado",
+            detail="Préstamo no encontrado o no pertenece a su empresa",
         )
 
     if prestamo_original.estado not in ["activo", "mora"]:

@@ -14,8 +14,8 @@ import uvicorn
 from app.core.config import settings
 from app.core.database import engine, get_db, create_tables, convertir_a_colombia
 from app.api.api import api_router
-from app.core.security import get_current_user, get_current_user_optional, get_current_admin_user
-from app.models.user import Usuario
+from app.core.security import get_current_user, get_current_user_optional, get_current_admin_user, get_current_super_admin_user
+from app.models.user import Usuario as UsuarioModel
 
 # Crear las tablas de la base de datos
 create_tables()
@@ -148,7 +148,7 @@ async def cambiar_password(request: Request, token: str = None, current_user = D
             payload = verify_token(token)
             if payload.get("verified") and payload.get("role") == "admin":
                 # Token válido para admin verificado
-                from app.models.user import Usuario
+                from app.models.user import Usuario as UsuarioModel
                 from app.core.database import get_db
                 db = next(get_db())
                 usuario = db.query(Usuario).filter(Usuario.id == int(payload.get("sub"))).first()
@@ -183,7 +183,7 @@ async def clientes_redirect(request: Request, current_user = Depends(get_current
 @app.get("/clientes/lista", response_class=HTMLResponse)
 async def clientes_lista(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de listado de clientes"""
     return templates.TemplateResponse("clientes/lista.html", {
@@ -195,7 +195,7 @@ async def clientes_lista(
 @app.get("/clientes/nuevo", response_class=HTMLResponse)
 async def clientes_nuevo(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de creación de cliente"""
     return templates.TemplateResponse("clientes/formulario.html", {
@@ -210,7 +210,7 @@ async def clientes_editar(
     cliente_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de edición de cliente"""
     from app.models.cliente import Cliente
@@ -239,7 +239,7 @@ async def prestamos_redirect(request: Request, current_user = Depends(get_curren
 @app.get("/prestamos/lista", response_class=HTMLResponse)
 async def prestamos_lista(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de listado de préstamos"""
     return templates.TemplateResponse("prestamos/lista.html", {
@@ -252,7 +252,7 @@ async def prestamos_lista(
 async def prestamos_nuevo(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de creación de préstamo"""
     from app.models.cliente import Cliente
@@ -281,7 +281,7 @@ async def prestamos_detalle(
     prestamo_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de detalle de préstamo"""
     from app.models.prestamo import Prestamo
@@ -306,7 +306,7 @@ async def refinanciar_prestamo(
     prestamo_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de refinanciación de préstamo"""
     from app.models.prestamo import Prestamo
@@ -347,7 +347,7 @@ async def pagos_redirect(request: Request, current_user = Depends(get_current_us
 @app.get("/pagos/lista", response_class=HTMLResponse)
 async def pagos_lista(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de listado de pagos"""
     return templates.TemplateResponse("pagos/lista.html", {
@@ -360,7 +360,7 @@ async def pagos_lista(
 async def pagos_registrar(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de registro de pago"""
     from app.models.prestamo import Prestamo
@@ -379,7 +379,7 @@ async def pagos_detalle(
     pago_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de detalle de pago"""
     from app.models.pago import Pago
@@ -401,7 +401,7 @@ async def pagos_detalle(
 @app.get("/reportes", response_class=HTMLResponse)
 async def reportes_index(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página principal de reportes"""
     return templates.TemplateResponse("reportes/index.html", {
@@ -413,7 +413,7 @@ async def reportes_index(
 @app.get("/reportes/pagos", response_class=HTMLResponse)
 async def reportes_pagos(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de reporte de pagos por fecha"""
     return templates.TemplateResponse("reportes/pagos.html", {
@@ -425,7 +425,7 @@ async def reportes_pagos(
 @app.get("/reportes/morosos", response_class=HTMLResponse)
 async def reportes_morosos(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de reporte de clientes morosos"""
     return templates.TemplateResponse("reportes/morosos.html", {
@@ -438,7 +438,7 @@ async def reportes_morosos(
 @app.get("/configuracion", response_class=HTMLResponse)
 async def configuracion_index(
     request: Request,
-    current_user: Usuario = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user)
 ):
     """Página principal de configuración del sistema"""
     return templates.TemplateResponse("configuracion/index.html", {
@@ -450,7 +450,7 @@ async def configuracion_index(
 @app.get("/configuracion/usuarios", response_class=HTMLResponse)
 async def configuracion_usuarios(
     request: Request,
-    current_user: Usuario = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user)
 ):
     """Página de gestión de usuarios"""
     return templates.TemplateResponse("configuracion/usuarios.html", {
@@ -462,7 +462,7 @@ async def configuracion_usuarios(
 @app.get("/configuracion/email", response_class=HTMLResponse)
 async def configuracion_email(
     request: Request,
-    current_user: Usuario = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user)
 ):
     """Página de configuración de email"""
     return templates.TemplateResponse("configuracion/email.html", {
@@ -474,13 +474,52 @@ async def configuracion_email(
 @app.get("/configuracion/sistema", response_class=HTMLResponse)
 async def configuracion_sistema(
     request: Request,
-    current_user: Usuario = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user)
 ):
     """Página de configuración del sistema"""
     return templates.TemplateResponse("configuracion/sistema.html", {
         "request": request,
         "title": "Configuración del Sistema",
         "user": current_user
+    })
+
+# Rutas de Gestión de Empresas (Super Admin)
+@app.get("/empresas", response_class=HTMLResponse)
+async def empresas_index(
+    request: Request,
+    current_user: UsuarioModel = Depends(get_current_super_admin_user)
+):
+    """Página principal de gestión de empresas (tenants)"""
+    return templates.TemplateResponse("empresas/index.html", {
+        "request": request,
+        "title": "Gestión de Empresas",
+        "user": current_user
+    })
+
+@app.get("/empresas/crear", response_class=HTMLResponse)
+async def empresas_crear(
+    request: Request,
+    current_user: UsuarioModel = Depends(get_current_super_admin_user)
+):
+    """Página para crear nueva empresa"""
+    return templates.TemplateResponse("empresas/crear.html", {
+        "request": request,
+        "title": "Crear Nueva Empresa",
+        "user": current_user
+    })
+
+@app.get("/empresas/{empresa_id}/editar", response_class=HTMLResponse)
+async def empresas_editar(
+    empresa_id: int,
+    request: Request,
+    current_user: UsuarioModel = Depends(get_current_super_admin_user)
+):
+    """Página para editar empresa existente"""
+    return templates.TemplateResponse("empresas/editar.html", {
+        "request": request,
+        "title": "Editar Empresa",
+        "user": current_user,
+        "empresa_id": empresa_id
     })
 
 # Rutas de Socios
@@ -494,7 +533,7 @@ async def socios_redirect(request: Request, current_user = Depends(get_current_u
 @app.get("/socios/lista", response_class=HTMLResponse)
 async def socios_lista(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de listado de socios"""
     return templates.TemplateResponse("socios/lista.html", {
@@ -506,7 +545,7 @@ async def socios_lista(
 @app.get("/socios/crear", response_class=HTMLResponse)
 async def socios_crear(
     request: Request,
-    current_user: Usuario = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user)
 ):
     """Página de creación de socio"""
     return templates.TemplateResponse("socios/crear.html", {
@@ -520,7 +559,7 @@ async def socios_editar(
     socio_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user)
 ):
     """Página de edición de socio"""
     from app.models.socio import Socio
@@ -543,7 +582,7 @@ async def socios_detalle(
     socio_id: int,
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de detalle de socio"""
     from app.models.socio import Socio
@@ -564,7 +603,7 @@ async def socios_detalle(
 @app.get("/socios/pagos", response_class=HTMLResponse)
 async def socios_pagos(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de pagos de socios"""
     return templates.TemplateResponse("socios/pagos.html", {
@@ -576,7 +615,7 @@ async def socios_pagos(
 @app.get("/socios/deudas", response_class=HTMLResponse)
 async def socios_deudas(
     request: Request,
-    current_user: Usuario = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user)
 ):
     """Página de deudas de la empresa con socios"""
     return templates.TemplateResponse("socios/deudas.html", {
@@ -589,7 +628,7 @@ async def socios_deudas(
 async def socios_retiro(
     request: Request,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user)
 ):
     """Página de gestión de retiros de socios (solo administradores)"""
     from app.models.socio import Socio
@@ -615,7 +654,7 @@ async def socios_retiro(
 @app.get("/backup", response_class=HTMLResponse)
 async def backup_index(
     request: Request,
-    current_user: Usuario = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user)
 ):
     """Página de gestión de backups"""
     return templates.TemplateResponse("backup/index.html", {
@@ -628,7 +667,7 @@ async def backup_index(
 @app.get("/documentos", response_class=HTMLResponse)
 async def documentos_index(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página principal de gestión de documentos"""
     # Convertir usuario a diccionario serializable
@@ -652,7 +691,7 @@ async def documentos_index(
 @app.get("/perfil", response_class=HTMLResponse)
 async def perfil_usuario(
     request: Request,
-    current_user: Usuario = Depends(get_current_user)
+    current_user: UsuarioModel = Depends(get_current_user)
 ):
     """Página de perfil del usuario"""
     return templates.TemplateResponse("perfil.html", {
@@ -667,6 +706,90 @@ async def logout():
     response = RedirectResponse(url="/login", status_code=302)
     response.delete_cookie(key="access_token")
     return response
+
+# ========== RUTAS DE SUPER ADMIN ==========
+
+@app.get("/admin/dashboard")
+async def admin_dashboard(request: Request, current_user: UsuarioModel = Depends(get_current_super_admin_user)):
+    """Dashboard del super administrador"""
+    return templates.TemplateResponse("admin/dashboard.html", {
+        "request": request,
+        "user": current_user
+    })
+
+@app.get("/admin/empresas")
+async def admin_empresas(request: Request, current_user: UsuarioModel = Depends(get_current_super_admin_user)):
+    """Gestión de empresas"""
+    return templates.TemplateResponse("admin/empresas.html", {
+        "request": request,
+        "user": current_user
+    })
+
+@app.get("/admin/empresas/crear")
+async def admin_crear_empresa(request: Request, current_user: UsuarioModel = Depends(get_current_super_admin_user)):
+    """Crear nueva empresa"""
+    return templates.TemplateResponse("admin/crear_empresa.html", {
+        "request": request,
+        "user": current_user
+    })
+
+@app.get("/admin/empresas/{empresa_id}")
+async def admin_ver_empresa(
+    request: Request,
+    empresa_id: int,
+    current_user: UsuarioModel = Depends(get_current_super_admin_user)
+):
+    """Ver detalles de empresa"""
+    return templates.TemplateResponse("admin/ver_empresa.html", {
+        "request": request,
+        "user": current_user,
+        "empresa_id": empresa_id
+    })
+
+@app.get("/admin/empresas/{empresa_id}/editar")
+async def admin_editar_empresa(
+    request: Request,
+    empresa_id: int,
+    current_user: UsuarioModel = Depends(get_current_super_admin_user)
+):
+    """Editar empresa"""
+    return templates.TemplateResponse("admin/editar_empresa.html", {
+        "request": request,
+        "user": current_user,
+        "empresa_id": empresa_id
+    })
+
+@app.get("/admin/planes")
+async def admin_planes(request: Request, current_user: UsuarioModel = Depends(get_current_super_admin_user)):
+    """Gestión de planes de suscripción"""
+    return templates.TemplateResponse("admin/planes.html", {
+        "request": request,
+        "user": current_user
+    })
+
+@app.get("/admin/planes/crear")
+async def admin_crear_plan(request: Request, current_user: UsuarioModel = Depends(get_current_super_admin_user)):
+    """Crear nuevo plan"""
+    return templates.TemplateResponse("admin/crear_plan.html", {
+        "request": request,
+        "user": current_user
+    })
+
+@app.get("/admin/suscripciones")
+async def admin_suscripciones(request: Request, current_user: UsuarioModel = Depends(get_current_super_admin_user)):
+    """Gestión de suscripciones"""
+    return templates.TemplateResponse("admin/suscripciones.html", {
+        "request": request,
+        "user": current_user
+    })
+
+@app.get("/admin/suscripciones/crear")
+async def admin_crear_suscripcion(request: Request, current_user: UsuarioModel = Depends(get_current_super_admin_user)):
+    """Crear nueva suscripción"""
+    return templates.TemplateResponse("admin/crear_suscripcion.html", {
+        "request": request,
+        "user": current_user
+    })
 
 if __name__ == "__main__":
     uvicorn.run(

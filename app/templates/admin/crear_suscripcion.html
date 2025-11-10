@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Suscripción - Super Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/admin/dashboard">
+                <i class="fas fa-crown"></i> Credexa SaaS - Panel de Administración
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/dashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/empresas">
+                            <i class="fas fa-building"></i> Empresas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/planes">
+                            <i class="fas fa-tags"></i> Planes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/admin/suscripciones">
+                            <i class="fas fa-credit-card"></i> Suscripciones
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-shield"></i> Super Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-plus-circle"></i> Crear Nueva Suscripción</h2>
+                <p class="text-muted mb-0">Asigna un plan de suscripción a una empresa</p>
+            </div>
+            <a href="/admin/suscripciones" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver a Suscripciones
+            </a>
+        </div>
+
+        <!-- Formulario -->
+        <div class="row justify-content-center">
+            <div class="col-xl-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-edit"></i> Información de la Suscripción
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="crearSuscripcionForm">
+                            <!-- Empresa y Plan -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary mb-3">
+                                        <i class="fas fa-building"></i> Selección de Empresa y Plan
+                                    </h6>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="empresa_id" class="form-label">
+                                        <i class="fas fa-building"></i> Empresa *
+                                    </label>
+                                    <select class="form-select" id="empresa_id" name="empresa_id" required>
+                                        <option value="">Selecciona una empresa...</option>
+                                        <!-- Se cargarán dinámicamente -->
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="plan_id" class="form-label">
+                                        <i class="fas fa-tags"></i> Plan de Suscripción *
+                                    </label>
+                                    <select class="form-select" id="plan_id" name="plan_id" required>
+                                        <option value="">Selecciona un plan...</option>
+                                        <!-- Se cargarán dinámicamente -->
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Información de Pago -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary mb-3">
+                                        <i class="fas fa-dollar-sign"></i> Información de Pago
+                                    </h6>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="tipo" class="form-label">
+                                        <i class="fas fa-calendar"></i> Tipo de Suscripción *
+                                    </label>
+                                    <select class="form-select" id="tipo" name="tipo" required>
+                                        <option value="mensual">Mensual</option>
+                                        <option value="anual">Anual</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="monto_pagado" class="form-label">
+                                        <i class="fas fa-money-bill-wave"></i> Monto Pagado (COP) *
+                                    </label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" id="monto_pagado" name="precio_pagado"
+                                               required min="0" step="1000" placeholder="50000">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="metodo_pago" class="form-label">
+                                        <i class="fas fa-credit-card"></i> Método de Pago
+                                    </label>
+                                    <select class="form-select" id="metodo_pago" name="metodo_pago">
+                                        <option value="">Selecciona método...</option>
+                                        <option value="transferencia">Transferencia Bancaria</option>
+                                        <option value="tarjeta">Tarjeta de Crédito</option>
+                                        <option value="efectivo">Efectivo</option>
+                                        <option value="cheque">Cheque</option>
+                                        <option value="otro">Otro</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="referencia_pago" class="form-label">
+                                        <i class="fas fa-hashtag"></i> Referencia de Pago
+                                    </label>
+                                    <input type="text" class="form-control" id="referencia_pago" name="referencia_pago"
+                                           placeholder="Número de transacción, recibo, etc.">
+                                </div>
+                            </div>
+
+                            <!-- Fechas -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary mb-3">
+                                        <i class="fas fa-calendar-alt"></i> Fechas de Suscripción
+                                    </h6>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="fecha_inicio" class="form-label">
+                                        <i class="fas fa-play-circle"></i> Fecha de Inicio *
+                                    </label>
+                                    <input type="date" class="form-control" id="fecha_inicio" name="fecha_inicio"
+                                           required value="2024-01-01">
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="fecha_proximo_pago" class="form-label">
+                                        <i class="fas fa-clock"></i> Próximo Pago
+                                    </label>
+                                    <input type="date" class="form-control" id="fecha_proximo_pago" name="fecha_proximo_pago">
+                                </div>
+                            </div>
+
+                            <!-- Estado -->
+                            <div class="row mb-4">
+                                <div class="col-12">
+                                    <h6 class="text-primary mb-3">
+                                        <i class="fas fa-info-circle"></i> Estado Inicial
+                                    </h6>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="estado" class="form-label">
+                                        <i class="fas fa-toggle-on"></i> Estado de la Suscripción *
+                                    </label>
+                                    <select class="form-select" id="estado" name="estado" required>
+                                        <option value="pendiente">Pendiente</option>
+                                        <option value="activa">Activa</option>
+                                        <option value="suspendida">Suspendida</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label for="activa" class="form-label">
+                                        <i class="fas fa-check"></i> Suscripción Activa
+                                    </label>
+                                    <div class="form-check mt-2">
+                                        <input class="form-check-input" type="checkbox" id="activa" name="activa" checked>
+                                        <label class="form-check-label" for="activa">
+                                            Marcar como suscripción activa
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Información del Plan (se carga dinámicamente) -->
+                            <div id="planInfo" class="row mb-4" style="display: none;">
+                                <div class="col-12">
+                                    <h6 class="text-info mb-3">
+                                        <i class="fas fa-info-circle"></i> Información del Plan Seleccionado
+                                    </h6>
+                                    <div class="card bg-light">
+                                        <div class="card-body" id="planDetails">
+                                            <!-- Se carga dinámicamente -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Botones -->
+                            <div class="row">
+                                <div class="col-12">
+                                    <div class="d-flex justify-content-between">
+                                        <a href="/admin/suscripciones" class="btn btn-outline-secondary">
+                                            <i class="fas fa-times"></i> Cancelar
+                                        </a>
+                                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                                            <i class="fas fa-save"></i> Crear Suscripción
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+
+    <script>
+        // Variables globales
+        let empresas = [];
+        let planes = [];
+
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarEmpresas();
+            cargarPlanes();
+            configurarFechas();
+        });
+
+        // Configurar fechas automáticamente
+        function configurarFechas() {
+            const fechaInicio = document.getElementById('fecha_inicio');
+            const fechaProximoPago = document.getElementById('fecha_proximo_pago');
+            const tipo = document.getElementById('tipo');
+
+            fechaInicio.addEventListener('change', function() {
+                actualizarFechaProximoPago();
+            });
+
+            tipo.addEventListener('change', function() {
+                actualizarFechaProximoPago();
+            });
+
+            // Configurar fecha inicial
+            const tomorrow = new Date();
+            tomorrow.setDate(tomorrow.getDate() + 1);
+            fechaInicio.value = tomorrow.toISOString().split('T')[0];
+            actualizarFechaProximoPago();
+        }
+
+        function actualizarFechaProximoPago() {
+            const fechaInicio = document.getElementById('fecha_inicio').value;
+            const tipo = document.getElementById('tipo').value;
+
+            if (fechaInicio && tipo) {
+                const fecha = new Date(fechaInicio);
+                if (tipo === 'mensual') {
+                    fecha.setMonth(fecha.getMonth() + 1);
+                } else if (tipo === 'anual') {
+                    fecha.setFullYear(fecha.getFullYear() + 1);
+                }
+
+                document.getElementById('fecha_proximo_pago').value = fecha.toISOString().split('T')[0];
+            }
+        }
+
+        // Cargar empresas
+        async function cargarEmpresas() {
+            try {
+                // Cargar empresas
+                const responseEmpresas = await fetch('/api/empresas/', { redirect: 'follow' });
+                if (!responseEmpresas.ok) {
+                    console.error('Error cargando empresas');
+                    return;
+                }
+                empresas = await responseEmpresas.json();
+
+                // Cargar suscripciones activas
+                const responseSuscripciones = await fetch('/api/admin/suscripciones/', { redirect: 'follow' });
+                let suscripcionesActivas = new Set();
+                if (responseSuscripciones.ok) {
+                    const suscripciones = await responseSuscripciones.json();
+                    suscripciones.forEach(sub => {
+                        if (sub.estado === 'activa') {
+                            suscripcionesActivas.add(sub.empresa_id);
+                        }
+                    });
+                }
+
+                const select = document.getElementById('empresa_id');
+                const empresasDisponibles = empresas.filter(empresa => !suscripcionesActivas.has(empresa.id));
+
+                // Limpiar opciones existentes
+                select.innerHTML = '<option value="">Selecciona una empresa...</option>';
+
+                if (empresasDisponibles.length === 0) {
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.textContent = 'No hay empresas disponibles sin suscripción activa';
+                    option.disabled = true;
+                    select.appendChild(option);
+
+                    // Mostrar mensaje de advertencia
+                    const mensaje = document.createElement('div');
+                    mensaje.className = 'alert alert-warning mt-2';
+                    mensaje.innerHTML = '<i class="fas fa-exclamation-triangle"></i> No hay empresas disponibles sin suscripción activa. <a href="/admin/empresas/crear">Crear nueva empresa</a>';
+                    select.parentNode.appendChild(mensaje);
+                } else {
+                    empresasDisponibles.forEach(empresa => {
+                        const option = document.createElement('option');
+                        option.value = empresa.id;
+                        option.textContent = `${empresa.nombre} - ${empresa.email}`;
+                        select.appendChild(option);
+                    });
+                }
+
+                console.log(`Cargadas ${empresasDisponibles.length} empresas disponibles de ${empresas.length} total`);
+            } catch (error) {
+                console.error('Error cargando empresas:', error);
+            }
+        }
+
+        // Cargar planes
+        async function cargarPlanes() {
+            try {
+                const response = await fetch('/api/admin/planes-suscripcion/', { redirect: 'follow' });
+                if (response.ok) {
+                    planes = await response.json();
+                    const select = document.getElementById('plan_id');
+
+                    planes.forEach(plan => {
+                        const option = document.createElement('option');
+                        option.value = plan.id;
+                        option.textContent = `${plan.nombre} - $${plan.precio_mensual.toLocaleString('es-CO')} COP/mes`;
+                        select.appendChild(option);
+                    });
+                } else {
+                    console.error('Error cargando planes');
+                }
+            } catch (error) {
+                console.error('Error cargando planes:', error);
+            }
+        }
+
+        // Mostrar información del plan seleccionado
+        document.getElementById('plan_id').addEventListener('change', function() {
+            const planId = this.value;
+            const planInfo = document.getElementById('planInfo');
+            const planDetails = document.getElementById('planDetails');
+
+            if (planId) {
+                const plan = planes.find(p => p.id == planId);
+                if (plan) {
+                    planDetails.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Nombre:</strong> ${plan.nombre}</p>
+                                <p><strong>Precio Mensual:</strong> $${plan.precio_mensual.toLocaleString('es-CO')} COP</p>
+                                ${plan.precio_anual ? `<p><strong>Precio Anual:</strong> $${plan.precio_anual.toLocaleString('es-CO')} COP</p>` : ''}
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Límites:</strong></p>
+                                <ul class="list-unstyled">
+                                    <li><i class="fas fa-users"></i> Usuarios: ${plan.max_usuarios}</li>
+                                    <li><i class="fas fa-user-friends"></i> Clientes: ${plan.max_clientes}</li>
+                                    <li><i class="fas fa-money-bill-wave"></i> Préstamos: ${plan.max_prestamos_activos}</li>
+                                    <li><i class="fas fa-hdd"></i> Almacenamiento: ${plan.almacenamiento_gb}GB</li>
+                                </ul>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12">
+                                <p><strong>Características:</strong></p>
+                                <div class="d-flex flex-wrap gap-1">
+                                    ${plan.soporte_premium ? '<span class="badge bg-info">Soporte Premium</span>' : ''}
+                                    ${plan.reportes_avanzados ? '<span class="badge bg-info">Reportes Avanzados</span>' : ''}
+                                    ${plan.api_access ? '<span class="badge bg-info">Acceso API</span>' : ''}
+                                    ${plan.backup_automatico ? '<span class="badge bg-info">Backup Automático</span>' : ''}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    planInfo.style.display = 'block';
+                }
+            } else {
+                planInfo.style.display = 'none';
+            }
+        });
+
+        // Actualizar precio basado en el tipo de suscripción
+        document.getElementById('plan_id').addEventListener('change', function() {
+            const planId = this.value;
+            const tipo = document.getElementById('tipo').value;
+
+            if (planId && tipo) {
+                const plan = planes.find(p => p.id == planId);
+                if (plan) {
+                    const precio = tipo === 'anual' && plan.precio_anual ?
+                        plan.precio_anual : plan.precio_mensual;
+                    document.getElementById('monto_pagado').value = precio; // Input tiene id="monto_pagado" pero name="precio_pagado"
+                }
+            }
+        });
+
+        document.getElementById('tipo').addEventListener('change', function() {
+            const planId = document.getElementById('plan_id').value;
+            const tipo = this.value;
+
+            if (planId && tipo) {
+                const plan = planes.find(p => p.id == planId);
+                if (plan) {
+                    const precio = tipo === 'anual' && plan.precio_anual ?
+                        plan.precio_anual : plan.precio_mensual;
+                    document.getElementById('monto_pagado').value = precio; // Input tiene id="monto_pagado" pero name="precio_pagado"
+                }
+            }
+        });
+
+        // Convertir form data a JSON antes de enviar
+        document.getElementById('crearSuscripcionForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            const formData = new FormData(this);
+            const data = {};
+
+            // Convertir FormData a objeto JSON con tipos correctos
+            for (let [key, value] of formData.entries()) {
+                if (key === 'empresa_id' || key === 'plan_id') {
+                    // Convertir a entero
+                    const intValue = parseInt(value);
+                    if (!isNaN(intValue) && intValue > 0) {
+                        data[key] = intValue;
+                    }
+                } else if (key === 'precio_pagado') {
+                    // Convertir a float
+                    const floatValue = parseFloat(value);
+                    if (!isNaN(floatValue) && floatValue > 0) {
+                        data[key] = floatValue;
+                    }
+                } else if (key === 'activa') {
+                    // Campo boolean (no se usa en el esquema actual)
+                    // data[key] = value === 'on' || value === 'true';
+                } else if (key === 'tipo' || key === 'estado') {
+                    // Campos enum - solo incluir si tienen valor
+                    if (value && value.trim()) {
+                        data[key] = value;
+                    }
+                } else if (key === 'metodo_pago' || key === 'referencia_pago') {
+                    // Campos opcionales - solo incluir si tienen valor
+                    if (value && value.trim()) {
+                        data[key] = value;
+                    }
+                }
+                // Ignorar otros campos como fecha_proximo_pago que se calculan automáticamente
+            }
+
+            // Asegurar que los campos requeridos estén presentes
+            if (!data.empresa_id || !data.plan_id || !data.precio_pagado) {
+                mostrarAlerta('error', 'Por favor complete todos los campos requeridos');
+                return;
+            }
+
+            // Agregar valores por defecto si no están presentes
+            if (!data.estado) data.estado = 'activa';
+            if (!data.tipo) data.tipo = 'mensual';
+
+            // Debug: mostrar datos antes de enviar
+            console.log('Datos a enviar:', data);
+            console.log('Campos requeridos - empresa_id:', data.empresa_id, 'plan_id:', data.plan_id, 'precio_pagado:', data.precio_pagado);
+
+            // Enviar con fetch para mayor control
+            fetch('/api/admin/suscripciones/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                credentials: 'same-origin',
+                body: JSON.stringify(data)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json().then(data => {
+                        mostrarAlerta('success', 'Suscripción creada exitosamente');
+                        setTimeout(() => {
+                            window.location.href = '/admin/suscripciones';
+                        }, 1500);
+                    });
+                } else {
+                    return response.text().then(text => {
+                        try {
+                            const errorData = JSON.parse(text);
+                            console.error('Error del servidor:', errorData);
+
+                            let errorMsg = 'Error al crear la suscripción';
+
+                            // Manejar diferentes tipos de errores
+                            if (typeof errorData.detail === 'string') {
+                                errorMsg = errorData.detail;
+                            } else if (Array.isArray(errorData.detail)) {
+                                errorMsg = errorData.detail.map(err =>
+                                    err.msg || err.detail || JSON.stringify(err)
+                                ).join(', ');
+                            } else if (errorData.detail) {
+                                errorMsg = JSON.stringify(errorData.detail);
+                            }
+
+                            // Mensajes específicos para errores comunes
+                            if (response.status === 400 && errorMsg.includes('ya tiene una suscripción activa')) {
+                                errorMsg = 'Esta empresa ya tiene una suscripción activa. Selecciona otra empresa o cancela la suscripción existente.';
+                            } else if (response.status === 404) {
+                                errorMsg = 'Empresa o plan no encontrado. Verifica que existan.';
+                            } else if (response.status === 422) {
+                                errorMsg = 'Datos inválidos. Verifica que todos los campos requeridos estén completos.';
+                            }
+
+                            mostrarAlerta('error', errorMsg);
+
+                        } catch (e) {
+                            console.error('Error parseando respuesta:', text);
+                            mostrarAlerta('error', `Error del servidor: ${response.status} ${response.statusText}`);
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error de red:', error);
+                mostrarAlerta('error', 'Error de conexión al crear la suscripción');
+            });
+        });
+
+        // Función para mostrar alertas
+        function mostrarAlerta(tipo, mensaje) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${tipo === 'error' ? 'danger' : tipo} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${mensaje}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

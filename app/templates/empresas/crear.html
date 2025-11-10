@@ -1,0 +1,256 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title mb-0">
+                        <i class="fas fa-building me-2"></i>
+                        Crear Nueva Empresa
+                    </h3>
+                    <div class="card-tools">
+                        <a href="/empresas" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i>
+                            Volver
+                        </a>
+                    </div>
+                </div>
+
+                <form id="form-crear-empresa">
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Información básica -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    Información Básica
+                                </h5>
+
+                                <div class="mb-3">
+                                    <label for="nombre" class="form-label">
+                                        Nombre de la Empresa <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="nombre" name="nombre" required>
+                                    <div class="form-text">Nombre completo de la institución prestamista</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="slug" class="form-label">
+                                        Slug (Identificador) <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="text" class="form-control" id="slug" name="slug" required
+                                           pattern="[a-z0-9-]+" title="Solo letras minúsculas, números y guiones">
+                                    <div class="form-text">Identificador único (ej: financiera-abc, cooperativax)</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">
+                                        Email Principal <span class="text-danger">*</span>
+                                    </label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                    <div class="form-text">Email de contacto principal de la empresa</div>
+                                </div>
+                            </div>
+
+                            <!-- Información adicional -->
+                            <div class="col-md-6">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-map-marker-alt me-2"></i>
+                                    Información de Contacto
+                                </h5>
+
+                                <div class="mb-3">
+                                    <label for="telefono" class="form-label">Teléfono</label>
+                                    <input type="text" class="form-control" id="telefono" name="telefono">
+                                    <div class="form-text">Número de teléfono de contacto</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="direccion" class="form-label">Dirección</label>
+                                    <textarea class="form-control" id="direccion" name="direccion" rows="3"></textarea>
+                                    <div class="form-text">Dirección física de la empresa</div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="dominio" class="form-label">Dominio Personalizado (Opcional)</label>
+                                    <input type="text" class="form-control" id="dominio" name="dominio"
+                                           placeholder="empresa.credexa.com">
+                                    <div class="form-text">Subdominio personalizado para esta empresa</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Configuración inicial -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h5 class="mb-3">
+                                    <i class="fas fa-cogs me-2"></i>
+                                    Configuración Inicial
+                                </h5>
+
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle me-2"></i>
+                                    <strong>Usuario Administrador:</strong> Se creará automáticamente un usuario administrador con el email proporcionado.
+                                    La contraseña por defecto será <code>admin123</code> (se recomienda cambiarla inmediatamente).
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="admin_password" class="form-label">Contraseña del Administrador (Opcional)</label>
+                                    <input type="password" class="form-control" id="admin_password" name="admin_password" minlength="6">
+                                    <div class="form-text">Si no se especifica, se usará la contraseña por defecto</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card-footer">
+                        <button type="submit" class="btn btn-primary" id="btn-crear">
+                            <i class="fas fa-save me-2"></i>
+                            Crear Empresa
+                        </button>
+                        <button type="button" class="btn btn-secondary" onclick="history.back()">
+                            <i class="fas fa-times me-2"></i>
+                            Cancelar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('form-crear-empresa');
+
+    // Generar slug automáticamente desde el nombre
+    document.getElementById('nombre').addEventListener('input', function() {
+        const nombre = this.value;
+        const slug = nombre.toLowerCase()
+            .replace(/[^a-z0-9\s-]/g, '') // Remover caracteres especiales
+            .replace(/\s+/g, '-') // Reemplazar espacios con guiones
+            .replace(/-+/g, '-') // Remover guiones múltiples
+            .trim('-'); // Remover guiones al inicio/final
+
+        document.getElementById('slug').value = slug;
+    });
+
+    // Validar slug en tiempo real
+    document.getElementById('slug').addEventListener('input', function() {
+        const slug = this.value;
+        const isValid = /^[a-z0-9-]+$/.test(slug);
+
+        this.classList.toggle('is-invalid', !isValid && slug.length > 0);
+        this.classList.toggle('is-valid', isValid && slug.length > 0);
+    });
+
+    // Manejar envío del formulario
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        // Validar formulario
+        if (!form.checkValidity()) {
+            form.reportValidity();
+            return;
+        }
+
+        // Recopilar datos
+        const formData = new FormData(form);
+        const empresaData = {
+            nombre: formData.get('nombre'),
+            slug: formData.get('slug'),
+            email: formData.get('email'),
+            telefono: formData.get('telefono') || null,
+            direccion: formData.get('direccion') || null,
+            dominio: formData.get('dominio') || null,
+            admin_password: formData.get('admin_password') || null
+        };
+
+        // Deshabilitar botón
+        const btnCrear = document.getElementById('btn-crear');
+        btnCrear.disabled = true;
+        btnCrear.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Creando...';
+
+        // Enviar solicitud
+        ajax({
+            url: '/api/empresas',
+            method: 'POST',
+            data: empresaData,
+            success: function(response) {
+                mostrarMensaje('Empresa creada exitosamente', 'success');
+
+                // Redirigir después de un breve delay
+                setTimeout(() => {
+                    window.location.href = '/empresas';
+                }, 2000);
+            },
+            error: function(xhr) {
+                btnCrear.disabled = false;
+                btnCrear.innerHTML = '<i class="fas fa-save me-2"></i>Crear Empresa';
+
+                let mensajeError = 'Error al crear la empresa';
+                if (xhr.responseJSON && xhr.responseJSON.detail) {
+                    mensajeError = xhr.responseJSON.detail;
+                }
+
+                mostrarMensaje(mensajeError, 'danger');
+            }
+        });
+    });
+});
+
+// Función para mostrar mensajes
+function mostrarMensaje(mensaje, tipo) {
+    // Remover alertas existentes
+    const existingAlerts = document.querySelectorAll('.alert');
+    existingAlerts.forEach(alert => alert.remove());
+
+    // Crear nueva alerta
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${tipo} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        ${mensaje}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+
+    // Insertar al inicio del contenedor
+    const container = document.querySelector('.container-fluid');
+    container.insertBefore(alertDiv, container.firstChild);
+
+    // Auto-remover después de 5 segundos para mensajes de éxito
+    if (tipo === 'success') {
+        setTimeout(() => {
+            if (alertDiv.parentNode) {
+                alertDiv.remove();
+            }
+        }, 5000);
+    }
+}
+</script>
+
+<style>
+.form-label {
+    font-weight: 600;
+}
+
+.card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.is-valid {
+    border-color: #198754 !important;
+}
+
+.is-invalid {
+    border-color: #dc3545 !important;
+}
+
+.alert {
+    margin-bottom: 1rem;
+}
+</style>
+
+{% endblock %}

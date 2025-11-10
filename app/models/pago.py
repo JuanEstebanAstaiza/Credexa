@@ -12,6 +12,7 @@ class Pago(Base):
     __tablename__ = "pagos"
 
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)  # Multi-tenant
     prestamo_id = Column(Integer, ForeignKey("prestamos.id"), nullable=False, index=True)
 
     # Datos del pago
@@ -34,6 +35,7 @@ class Pago(Base):
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relaciones
+    empresa = relationship("Empresa", back_populates="pagos")  # Multi-tenant
     prestamo = relationship("Prestamo", back_populates="pagos")
 
     def __repr__(self):

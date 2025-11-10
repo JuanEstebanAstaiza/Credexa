@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crear Empresa - Super Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-crown"></i> Super Admin - Credexa SaaS
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/dashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/admin/empresas">
+                            <i class="fas fa-building"></i> Empresas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/planes">
+                            <i class="fas fa-tags"></i> Planes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/suscripciones">
+                            <i class="fas fa-credit-card"></i> Suscripciones
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-shield"></i> Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-plus"></i> Crear Nueva Empresa</h2>
+                <p class="text-muted">Registra una nueva empresa en la plataforma SaaS</p>
+            </div>
+            <a href="/admin/empresas" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Volver
+            </a>
+        </div>
+
+        <!-- Formulario -->
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-building"></i> Información de la Empresa
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="crearEmpresaForm">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="nombre" class="form-label">Nombre de la Empresa *</label>
+                                    <input type="text" class="form-control" id="nombre" required>
+                                    <div class="invalid-feedback">
+                                        El nombre es obligatorio
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="slug" class="form-label">Slug (URL) *</label>
+                                    <input type="text" class="form-control" id="slug" required
+                                           pattern="^[a-z0-9-]+$" title="Solo letras minúsculas, números y guiones">
+                                    <div class="invalid-feedback">
+                                        El slug debe contener solo letras minúsculas, números y guiones
+                                    </div>
+                                    <div class="form-text">Se usará para identificar la empresa en URLs</div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="email" class="form-label">Email de Contacto *</label>
+                                    <input type="email" class="form-control" id="email" required>
+                                    <div class="invalid-feedback">
+                                        Ingrese un email válido
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="telefono" class="form-label">Teléfono</label>
+                                    <input type="text" class="form-control" id="telefono"
+                                           pattern="^\+?[\d\s\-\(\)]+$" title="Formato de teléfono inválido">
+                                    <div class="invalid-feedback">
+                                        Formato de teléfono inválido
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="direccion" class="form-label">Dirección</label>
+                                <textarea class="form-control" id="direccion" rows="3"></textarea>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="configuracion" class="form-label">Configuración Personalizada (JSON)</label>
+                                <textarea class="form-control" id="configuracion" rows="3"
+                                         placeholder='{"theme": "light", "language": "es"}'></textarea>
+                                <div class="form-text">Configuración adicional en formato JSON (opcional)</div>
+                            </div>
+
+                            <hr>
+
+                            <h5 class="mb-3">
+                                <i class="fas fa-user"></i> Administrador de la Empresa
+                            </h5>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="adminNombre" class="form-label">Nombre Completo *</label>
+                                    <input type="text" class="form-control" id="adminNombre" required>
+                                    <div class="invalid-feedback">
+                                        El nombre del administrador es obligatorio
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="adminUsername" class="form-label">Nombre de Usuario *</label>
+                                    <input type="text" class="form-control" id="adminUsername" required>
+                                    <div class="invalid-feedback">
+                                        El nombre de usuario es obligatorio
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="adminEmail" class="form-label">Email del Administrador *</label>
+                                <input type="email" class="form-control" id="adminEmail" required>
+                                <div class="invalid-feedback">
+                                    Ingrese un email válido para el administrador
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="adminPassword" class="form-label">Contraseña *</label>
+                                    <input type="password" class="form-control" id="adminPassword" required minlength="6">
+                                    <div class="invalid-feedback">
+                                        La contraseña debe tener al menos 6 caracteres
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="adminPasswordConfirm" class="form-label">Confirmar Contraseña *</label>
+                                    <input type="password" class="form-control" id="adminPasswordConfirm" required minlength="6">
+                                    <div class="invalid-feedback">
+                                        Las contraseñas no coinciden
+                                    </div>
+                                </div>
+                            </div>
+
+                            <hr>
+
+                            <div class="d-flex justify-content-between">
+                                <button type="button" class="btn btn-secondary" onclick="history.back()">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Crear Empresa
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de éxito -->
+    <div class="modal fade" id="exitoModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="fas fa-check-circle text-success"></i> Empresa Creada Exitosamente
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>La empresa ha sido creada correctamente. Ahora puede:</p>
+                    <ul>
+                        <li>Asignar un plan de suscripción</li>
+                        <li>Configurar usuarios adicionales</li>
+                        <li>Personalizar la configuración</li>
+                    </ul>
+                </div>
+                <div class="modal-footer">
+                    <a href="/admin/empresas" class="btn btn-primary">
+                        <i class="fas fa-list"></i> Ver Empresas
+                    </a>
+                    <a href="/admin/suscripciones/crear" class="btn btn-success">
+                        <i class="fas fa-credit-card"></i> Crear Suscripción
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+
+    <script>
+        // Generar slug automáticamente desde el nombre
+        document.getElementById('nombre').addEventListener('input', function() {
+            const nombre = this.value;
+            const slug = nombre.toLowerCase()
+                .replace(/[^a-z0-9\s-]/g, '') // Remover caracteres especiales
+                .replace(/\s+/g, '-') // Reemplazar espacios con guiones
+                .replace(/-+/g, '-') // Remover guiones múltiples
+                .trim(); // Remover espacios al inicio y fin
+
+            document.getElementById('slug').value = slug;
+        });
+
+        // Validar que las contraseñas coincidan
+        document.getElementById('adminPasswordConfirm').addEventListener('input', function() {
+            const password = document.getElementById('adminPassword').value;
+            const confirm = this.value;
+
+            if (password !== confirm) {
+                this.setCustomValidity('Las contraseñas no coinciden');
+            } else {
+                this.setCustomValidity('');
+            }
+        });
+
+        // Manejar envío del formulario
+        document.getElementById('crearEmpresaForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            if (!this.checkValidity()) {
+                this.classList.add('was-validated');
+                return;
+            }
+
+            // Deshabilitar botón
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creando...';
+
+            try {
+                // Preparar datos de la empresa
+                const empresaData = {
+                    nombre: document.getElementById('nombre').value,
+                    slug: document.getElementById('slug').value,
+                    email: document.getElementById('email').value,
+                    telefono: document.getElementById('telefono').value || null,
+                    direccion: document.getElementById('direccion').value || null,
+                    configuracion: document.getElementById('configuracion').value ?
+                        JSON.parse(document.getElementById('configuracion').value) : null
+                };
+
+                // Preparar datos del administrador
+                const adminData = {
+                    nombre_completo: document.getElementById('adminNombre').value,
+                    username: document.getElementById('adminUsername').value,
+                    email: document.getElementById('adminEmail').value,
+                    password: document.getElementById('adminPassword').value
+                };
+
+                empresaData.admin_data = adminData;
+
+                // Enviar solicitud
+                const response = await fetch('/api/empresas', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(empresaData)
+                });
+
+                if (response.ok) {
+                    const empresa = await response.json();
+                    console.log('Empresa creada:', empresa);
+
+                    // Mostrar modal de éxito
+                    new bootstrap.Modal(document.getElementById('exitoModal')).show();
+
+                } else {
+                    const error = await response.json();
+                    mostrarAlerta('error', error.detail || 'Error al crear la empresa');
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                mostrarAlerta('error', 'Error al crear la empresa. Verifica la configuración JSON si la proporcionaste.');
+            } finally {
+                // Rehabilitar botón
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+
+        // Mostrar alerta
+        function mostrarAlerta(tipo, mensaje) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${tipo === 'error' ? 'danger' : tipo} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${mensaje}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+
+        // Validar JSON en tiempo real
+        document.getElementById('configuracion').addEventListener('input', function() {
+            const jsonText = this.value.trim();
+            if (jsonText) {
+                try {
+                    JSON.parse(jsonText);
+                    this.classList.remove('is-invalid');
+                    this.classList.add('is-valid');
+                } catch (e) {
+                    this.classList.remove('is-valid');
+                    this.classList.add('is-invalid');
+                }
+            } else {
+                this.classList.remove('is-valid', 'is-invalid');
+            }
+        });
+    </script>
+</body>
+</html>
+

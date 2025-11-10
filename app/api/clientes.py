@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_, and_, func
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_tenant
 from app.models.user import Usuario
 from app.models.cliente import Cliente
 from app.schemas.cliente import (
@@ -24,19 +24,25 @@ router = APIRouter()
 async def crear_cliente(
     cliente_data: ClienteCreate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Crear un nuevo cliente"""
-    # Verificar si la cédula ya existe
-    existing_cliente = db.query(Cliente).filter(Cliente.cedula == cliente_data.cedula).first()
+    # Verificar si la cédula ya existe en esta empresa
+    existing_cliente = db.query(Cliente).filter(
+        Cliente.cedula == cliente_data.cedula,
+        Cliente.empresa_id == tenant.id
+    ).first()
     if existing_cliente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe un cliente con esta cédula",
+            detail="Ya existe un cliente con esta cédula en su empresa",
         )
 
-    # Crear nuevo cliente
-    db_cliente = Cliente(**cliente_data.dict())
+    # Crear nuevo cliente con empresa_id
+    cliente_dict = cliente_data.dict()
+    cliente_dict["empresa_id"] = tenant.id
+    db_cliente = Cliente(**cliente_dict)
     db.add(db_cliente)
     db.commit()
     db.refresh(db_cliente)
@@ -53,11 +59,12 @@ async def listar_clientes(
     email: Optional[str] = Query(None),
     activo: Optional[str] = Query(None),
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Listar clientes con filtros y paginación"""
     # Construir filtros
-    filtros = []
+    filtros = [Cliente.empresa_id == tenant.id]  # Filtrar por empresa del usuario
     if nombre and nombre.strip():
         filtros.append(Cliente.nombre_completo.ilike(f"%{nombre}%"))
     if cedula and cedula.strip():
@@ -102,10 +109,14 @@ async def listar_clientes(
 async def obtener_cliente(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Obtener un cliente por ID"""
-    cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+    cliente = db.query(Cliente).filter(
+        Cliente.id == cliente_id,
+        Cliente.empresa_id == tenant.id
+    ).first()
     if not cliente:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -118,23 +129,31 @@ async def actualizar_cliente(
     cliente_id: int,
     cliente_data: ClienteUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Actualizar un cliente"""
-    cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+    cliente = db.query(Cliente).filter(
+        Cliente.id == cliente_id,
+        Cliente.empresa_id == tenant.id
+    ).first()
     if not cliente:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Cliente no encontrado",
         )
 
-    # Verificar cédula única si se está cambiando
+    # Verificar cédula única si se está cambiando (dentro de la empresa)
     if cliente_data.cedula and cliente_data.cedula != cliente.cedula:
-        existing_cliente = db.query(Cliente).filter(Cliente.cedula == cliente_data.cedula).first()
+        existing_cliente = db.query(Cliente).filter(
+            Cliente.cedula == cliente_data.cedula,
+            Cliente.empresa_id == tenant.id,
+            Cliente.id != cliente_id
+        ).first()
         if existing_cliente:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Ya existe un cliente con esta cédula",
+                detail="Ya existe un cliente con esta cédula en su empresa",
             )
 
     # Actualizar campos
@@ -151,10 +170,14 @@ async def actualizar_cliente(
 async def eliminar_cliente(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Eliminar un cliente (desactivar)"""
-    cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+    cliente = db.query(Cliente).filter(
+        Cliente.id == cliente_id,
+        Cliente.empresa_id == tenant.id
+    ).first()
     if not cliente:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -171,10 +194,14 @@ async def eliminar_cliente(
 async def activar_cliente(
     cliente_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Reactivar un cliente"""
-    cliente = db.query(Cliente).filter(Cliente.id == cliente_id).first()
+    cliente = db.query(Cliente).filter(
+        Cliente.id == cliente_id,
+        Cliente.empresa_id == tenant.id
+    ).first()
     if not cliente:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

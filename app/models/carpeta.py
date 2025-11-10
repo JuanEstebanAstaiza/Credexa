@@ -6,6 +6,7 @@ from app.core.database import Base
 class Carpeta(Base):
     __tablename__ = "carpetas"
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)  # Multi-tenant
     nombre = Column(String(255), nullable=False, index=True)
     ruta_completa = Column(String(1000), nullable=False, index=True)  # Ruta completa desde raíz
     tipo = Column(String(50), nullable=False)  # 'mes', 'socio', 'cliente', 'prestamo', 'manual'
@@ -21,6 +22,7 @@ class Carpeta(Base):
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relaciones
+    empresa = relationship("Empresa", back_populates="carpetas")  # Multi-tenant
     parent = relationship("Carpeta", remote_side=[id], backref="subcarpetas")
     prestamo = relationship("Prestamo", back_populates="carpeta")
     usuario_creador = relationship("Usuario", back_populates="carpetas_creadas")

@@ -13,6 +13,7 @@ class PagoSocio(Base):
     __tablename__ = "pagos_socio"
 
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)  # Multi-tenant
     socio_id = Column(Integer, ForeignKey("socios.id"), nullable=False, index=True)
 
     # Información del pago
@@ -20,7 +21,7 @@ class PagoSocio(Base):
     monto = Column(Numeric(15, 2), nullable=False)
     fecha_pago = Column(DateTime, nullable=False, index=True)
     metodo_pago = Column(String, nullable=True)  # efectivo, transferencia, cheque, etc.
-    numero_recibo = Column(String, nullable=True, unique=True, index=True)
+    numero_recibo = Column(String, nullable=True, index=True)  # Ya no unique global, solo por empresa
     descripcion = Column(Text, nullable=True)
 
     # Información adicional
@@ -49,6 +50,7 @@ class PagoSocio(Base):
         return self.tipo in ['aporte', 'prestamo']
 
     # Relaciones
+    empresa = relationship("Empresa", back_populates="pagos_socio")  # Multi-tenant
     socio = relationship("Socio", back_populates="pagos_socio")
     prestamo = relationship("Prestamo", back_populates="pagos_socio")
     usuario = relationship("Usuario", back_populates="pagos_socio")

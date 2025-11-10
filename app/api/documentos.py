@@ -9,7 +9,7 @@ from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import and_, or_
 from app.core.database import get_db
-from app.core.security import get_current_admin_user, get_current_user
+from app.core.security import get_current_admin_user, get_current_user, get_current_tenant
 from app.models.user import Usuario
 from app.models.carpeta import Carpeta
 from app.models.documento import Documento
@@ -26,6 +26,7 @@ DOCUMENTOS_DIR.mkdir(exist_ok=True)
 @router.get("/carpetas/arbol", response_model=CarpetaTreeResponse)
 async def obtener_arbol_carpetas(
     current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db)
 ):
     """Obtener el árbol completo de carpetas"""
@@ -39,8 +40,11 @@ async def obtener_arbol_carpetas(
             documentos_count=len(carpeta.documentos)
         )
 
-    # Obtener carpetas raíz (sin padre)
-    carpetas_raiz = db.query(Carpeta).filter(Carpeta.parent_id.is_(None)).all()
+    # Obtener carpetas raíz (sin padre) filtradas por empresa
+    carpetas_raiz = db.query(Carpeta).filter(
+        Carpeta.parent_id.is_(None),
+        Carpeta.empresa_id == tenant.id
+    ).all()
 
     # Para simplificar, devolver una estructura con todas las carpetas raíz
     return CarpetaTreeResponse(
@@ -57,10 +61,11 @@ async def listar_carpetas(
     tipo: Optional[str] = Query(None, description="Tipo de carpeta"),
     entidad_id: Optional[int] = Query(None, description="ID de la entidad"),
     current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant),
     db: Session = Depends(get_db)
 ):
     """Listar carpetas con filtros opcionales"""
-    query = db.query(Carpeta)
+    query = db.query(Carpeta).filter(Carpeta.empresa_id == tenant.id)
 
     if parent_id is not None:
         query = query.filter(Carpeta.parent_id == parent_id)

@@ -12,18 +12,20 @@ class SolicitudPassword(Base):
     __tablename__ = "solicitudes_password"
 
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)  # Multi-tenant
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False, index=True)
     tipo_solicitud = Column(String(20), nullable=False)  # 'usuario' o 'admin'
     estado = Column(String(20), nullable=False, default="pendiente")  # pendiente, aprobada, rechazada, completada
     nueva_password = Column(String, nullable=True)  # Nueva contraseña (solo para admin)
     motivo = Column(Text, nullable=True)  # Motivo de la solicitud (para usuarios)
     comentarios_admin = Column(Text, nullable=True)  # Comentarios del administrador
-    token_verificacion = Column(String(100), unique=True, nullable=True, index=True)  # Token único para validación
+    token_verificacion = Column(String(100), nullable=True, index=True)  # Token único para validación (ya no unique global)
     fecha_solicitud = Column(DateTime(timezone=True), server_default=func.now())
     fecha_respuesta = Column(DateTime(timezone=True), nullable=True)
     respondido_por = Column(Integer, ForeignKey("usuarios.id"), nullable=True)  # Admin que respondió
 
     # Relaciones
+    empresa = relationship("Empresa", back_populates="solicitudes_password")  # Multi-tenant
     usuario = relationship("Usuario", back_populates="solicitudes_password", foreign_keys=[usuario_id])
     administrador = relationship("Usuario", foreign_keys=[respondido_por])
 

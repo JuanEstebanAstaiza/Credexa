@@ -2,7 +2,7 @@
 Modelo de Cliente
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Text
+from sqlalchemy import Column, Integer, String, DateTime, Text, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -12,8 +12,9 @@ class Cliente(Base):
     __tablename__ = "clientes"
 
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)  # Multi-tenant
     nombre_completo = Column(String, nullable=False, index=True)
-    cedula = Column(String, unique=True, nullable=False, index=True)
+    cedula = Column(String, nullable=False, index=True)  # Ya no unique global, solo por empresa
     telefono = Column(String, nullable=True)
     email = Column(String, nullable=True)
     direccion = Column(Text, nullable=True)
@@ -37,4 +38,5 @@ class Cliente(Base):
         return self.activo == 1
 
     # Relaciones
+    empresa = relationship("Empresa", back_populates="clientes")  # Multi-tenant
     prestamos = relationship("Prestamo", back_populates="cliente", cascade="all, delete-orphan")

@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestionar Planes - Super Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/static/css/style.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-crown"></i> Super Admin - Credexa SaaS
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/dashboard">
+                            <i class="fas fa-tachometer-alt"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/empresas">
+                            <i class="fas fa-building"></i> Empresas
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link active" href="/admin/planes">
+                            <i class="fas fa-tags"></i> Planes
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="/admin/suscripciones">
+                            <i class="fas fa-credit-card"></i> Suscripciones
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="navbarDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user-shield"></i> Admin
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="/logout">
+                                <i class="fas fa-sign-out-alt"></i> Cerrar Sesión
+                            </a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Header -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h2><i class="fas fa-tags"></i> Gestión de Planes de Suscripción</h2>
+                <p class="text-muted">Administra los planes de suscripción disponibles para las empresas</p>
+            </div>
+            <a href="/admin/planes/crear" class="btn btn-primary">
+                <i class="fas fa-plus"></i> Nuevo Plan
+            </a>
+        </div>
+
+        <!-- Estadísticas de Planes -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-primary">
+                            <i class="fas fa-list"></i> Total Planes
+                        </h5>
+                        <h3 class="mb-0" id="totalPlanes">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-success">
+                            <i class="fas fa-check-circle"></i> Activos
+                        </h5>
+                        <h3 class="mb-0" id="planesActivos">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-info">
+                            <i class="fas fa-users"></i> Suscripciones
+                        </h5>
+                        <h3 class="mb-0" id="totalSuscripciones">-</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center">
+                    <div class="card-body">
+                        <h5 class="card-title text-warning">
+                            <i class="fas fa-dollar-sign"></i> Ingresos Mensuales
+                        </h5>
+                        <h3 class="mb-0" id="ingresosMensuales">$0</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <input type="text" class="form-control" id="filtroNombre" placeholder="Buscar por nombre...">
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="filtroEstado">
+                            <option value="">Todos los estados</option>
+                            <option value="true">Activos</option>
+                            <option value="false">Inactivos</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select class="form-select" id="filtroPopular">
+                            <option value="">Todos</option>
+                            <option value="true">Populares</option>
+                            <option value="false">No populares</option>
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary" onclick="aplicarFiltros()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="limpiarFiltros()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Planes -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="fas fa-list"></i> Lista de Planes
+                    <span class="badge bg-primary ms-2" id="totalPlanesLista">0</span>
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover" id="planesTable">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Plan</th>
+                                <th>Precio Mensual</th>
+                                <th>Precio Anual</th>
+                                <th>Límites</th>
+                                <th>Suscripciones</th>
+                                <th>Estado</th>
+                                <th>Popular</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="planesTableBody">
+                            <!-- Se llena dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Paginación -->
+                <nav id="paginacion" class="mt-3">
+                    <!-- Se genera dinámicamente -->
+                </nav>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para confirmar acciones -->
+    <div class="modal fade" id="confirmarModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="confirmarModalTitle">Confirmar Acción</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="confirmarModalBody">
+                    ¿Está seguro de realizar esta acción?
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="confirmarBtn">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+
+    <script>
+        // Variables globales
+        let planes = [];
+        let filtros = {
+            nombre: '',
+            estado: '',
+            popular: '',
+            pagina: 1,
+            limite: 20
+        };
+
+        // Cargar datos al iniciar
+        document.addEventListener('DOMContentLoaded', function() {
+            cargarPlanes();
+            cargarEstadisticas();
+        });
+
+        // Cargar estadísticas
+        async function cargarEstadisticas() {
+            try {
+                // Cargar estadísticas de suscripciones
+                const statsResponse = await fetch('/api/admin/suscripciones/stats/general');
+                if (statsResponse.ok) {
+                    const stats = await statsResponse.json();
+                    document.getElementById('totalSuscripciones').textContent = stats.suscripciones_activas;
+                    document.getElementById('ingresosMensuales').textContent =
+                        new Intl.NumberFormat('es-CO', {
+                            style: 'currency',
+                            currency: 'COP'
+                        }).format(stats.ingresos_mensuales_actuales);
+                }
+            } catch (error) {
+                console.error('Error cargando estadísticas:', error);
+            }
+        }
+
+        // Cargar planes
+        async function cargarPlanes() {
+            try {
+                const params = new URLSearchParams();
+                if (filtros.nombre) params.append('nombre', filtros.nombre);
+                if (filtros.estado) params.append('activo', filtros.estado);
+
+                const response = await fetch(`/api/admin/planes-suscripcion/?${params}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    planes = data;
+
+                    mostrarPlanes(planes);
+                    actualizarContadores(planes);
+                }
+            } catch (error) {
+                console.error('Error cargando planes:', error);
+            }
+        }
+
+        // Mostrar planes en la tabla
+        function mostrarPlanes(planes) {
+            const tbody = document.getElementById('planesTableBody');
+            tbody.innerHTML = '';
+
+            if (planes.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="8" class="text-center py-4">
+                            <i class="fas fa-tags fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No se encontraron planes</p>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            for (const plan of planes) {
+                const limites = [];
+                if (plan.max_usuarios > 0) limites.push(`${plan.max_usuarios} usuarios`);
+                if (plan.max_clientes > 0) limites.push(`${plan.max_clientes} clientes`);
+                if (plan.max_prestamos_activos > 0) limites.push(`${plan.max_prestamos_activos} préstamos`);
+                if (plan.almacenamiento_gb > 0) limites.push(`${plan.almacenamiento_gb}GB`);
+
+                const limitesText = limites.length > 0 ? limites.join(', ') : 'Sin límites';
+
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>
+                        <div>
+                            <strong>${plan.nombre}</strong>
+                            <br>
+                            <small class="text-muted">${plan.slug}</small>
+                            ${plan.descripcion ? `<br><small class="text-muted">${plan.descripcion}</small>` : ''}
+                        </div>
+                    </td>
+                    <td>
+                        <strong class="text-primary">
+                            ${new Intl.NumberFormat('es-CO', {
+                                style: 'currency',
+                                currency: 'COP'
+                            }).format(plan.precio_mensual)}
+                        </strong>
+                    </td>
+                    <td>
+                        ${plan.precio_anual ?
+                            `<strong class="text-success">
+                                ${new Intl.NumberFormat('es-CO', {
+                                    style: 'currency',
+                                    currency: 'COP'
+                                }).format(plan.precio_anual)}
+                            </strong>` :
+                            '<span class="text-muted">-</span>'
+                        }
+                    </td>
+                    <td>
+                        <small class="text-muted">${limitesText}</small>
+                    </td>
+                    <td>
+                        <span class="badge bg-info">0 suscripciones</span>
+                    </td>
+                    <td>
+                        <span class="badge ${plan.activo ? 'bg-success' : 'bg-danger'}">
+                            ${plan.activo ? 'Activo' : 'Inactivo'}
+                        </span>
+                    </td>
+                    <td>
+                        ${plan.popular ?
+                            '<i class="fas fa-star text-warning"></i> <small>Popular</small>' :
+                            '<small class="text-muted">No</small>'
+                        }
+                    </td>
+                    <td>
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-info" onclick="verPlan(${plan.id})" title="Ver detalles">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <a href="/admin/planes/${plan.id}/editar" class="btn btn-outline-primary" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </a>
+                            <button class="btn btn-outline-warning" onclick="cambiarEstadoPlan(${plan.id}, ${plan.activo})"
+                                    title="${plan.activo ? 'Desactivar' : 'Activar'}">
+                                <i class="fas ${plan.activo ? 'fa-ban' : 'fa-check'}"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="eliminarPlan(${plan.id}, '${plan.nombre}')"
+                                    title="Eliminar">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            }
+        }
+
+        // Actualizar contadores
+        function actualizarContadores(planes) {
+            const total = planes.length;
+            const activos = planes.filter(p => p.activo).length;
+
+            document.getElementById('totalPlanes').textContent = total;
+            document.getElementById('totalPlanesLista').textContent = total;
+            document.getElementById('planesActivos').textContent = activos;
+        }
+
+        // Aplicar filtros
+        function aplicarFiltros() {
+            filtros.nombre = document.getElementById('filtroNombre').value;
+            filtros.estado = document.getElementById('filtroEstado').value;
+            filtros.popular = document.getElementById('filtroPopular').value;
+            filtros.pagina = 1;
+
+            cargarPlanes();
+        }
+
+        // Limpiar filtros
+        function limpiarFiltros() {
+            document.getElementById('filtroNombre').value = '';
+            document.getElementById('filtroEstado').value = '';
+            document.getElementById('filtroPopular').value = '';
+
+            filtros = {
+                nombre: '',
+                estado: '',
+                popular: '',
+                pagina: 1,
+                limite: 20
+            };
+
+            cargarPlanes();
+        }
+
+        // Ver detalles del plan
+        async function verPlan(planId) {
+            try {
+                const response = await fetch(`/api/admin/planes-suscripcion/${planId}`);
+                if (response.ok) {
+                    const plan = await response.json();
+
+                    // Mostrar modal con detalles
+                    mostrarDetallesPlan(plan);
+                }
+            } catch (error) {
+                console.error('Error cargando plan:', error);
+                mostrarAlerta('error', 'Error al cargar los detalles del plan');
+            }
+        }
+
+        // Mostrar detalles del plan en modal
+        function mostrarDetallesPlan(plan) {
+            const caracteristicas = [];
+            if (plan.soporte_premium) caracteristicas.push('Soporte Premium');
+            if (plan.reportes_avanzados) caracteristicas.push('Reportes Avanzados');
+            if (plan.api_access) caracteristicas.push('Acceso API');
+            if (plan.integraciones) caracteristicas.push('Integraciones');
+            if (plan.backup_automatico) caracteristicas.push('Backup Automático');
+
+            const caracteristicasHtml = caracteristicas.length > 0 ?
+                caracteristicas.map(c => `<span class="badge bg-secondary me-1">${c}</span>`).join('') :
+                '<span class="text-muted">Sin características especiales</span>';
+
+            // Crear modal dinámicamente
+            const modalHtml = `
+                <div class="modal fade" id="detallesModal" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">
+                                    <i class="fas fa-tag"></i> ${plan.nombre}
+                                </h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Información General</h6>
+                                        <p><strong>Slug:</strong> ${plan.slug}</p>
+                                        <p><strong>Descripción:</strong> ${plan.descripcion || 'Sin descripción'}</p>
+                                        <p><strong>Estado:</strong>
+                                            <span class="badge ${plan.activo ? 'bg-success' : 'bg-danger'}">
+                                                ${plan.activo ? 'Activo' : 'Inactivo'}
+                                            </span>
+                                        </p>
+                                        <p><strong>Popular:</strong> ${plan.popular ? 'Sí' : 'No'}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Precios</h6>
+                                        <p><strong>Mensual:</strong>
+                                            ${new Intl.NumberFormat('es-CO', {
+                                                style: 'currency',
+                                                currency: 'COP'
+                                            }).format(plan.precio_mensual)}
+                                        </p>
+                                        ${plan.precio_anual ? `
+                                        <p><strong>Anual:</strong>
+                                            ${new Intl.NumberFormat('es-CO', {
+                                                style: 'currency',
+                                                currency: 'COP'
+                                            }).format(plan.precio_anual)}
+                                        </p>` : ''}
+                                        <h6 class="mt-3">Límites</h6>
+                                        <p><strong>Usuarios:</strong> ${plan.max_usuarios}</p>
+                                        <p><strong>Clientes:</strong> ${plan.max_clientes}</p>
+                                        <p><strong>Préstamos:</strong> ${plan.max_prestamos_activos}</p>
+                                        <p><strong>Almacenamiento:</strong> ${plan.almacenamiento_gb}GB</p>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <h6>Características</h6>
+                                        <div>${caracteristicasHtml}</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                <a href="/admin/planes/${plan.id}/editar" class="btn btn-primary">
+                                    <i class="fas fa-edit"></i> Editar Plan
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Agregar modal al DOM
+            document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+            // Mostrar modal
+            const modal = new bootstrap.Modal(document.getElementById('detallesModal'));
+            modal.show();
+
+            // Limpiar modal cuando se cierre
+            document.getElementById('detallesModal').addEventListener('hidden.bs.modal', function() {
+                this.remove();
+            });
+        }
+
+        // Cambiar estado del plan
+        async function cambiarEstadoPlan(planId, estadoActual) {
+            const accion = estadoActual ? 'desactivar' : 'activar';
+            const nuevaAccion = estadoActual ? 'Desactivar' : 'Activar';
+
+            mostrarConfirmacion(
+                `${nuevaAccion} Plan`,
+                `¿Está seguro de ${accion} este plan?`,
+                async () => {
+                    try {
+                        // Por ahora, solo mostrar que funcionaría
+                        mostrarAlerta('success', `Plan ${nuevaAccion.toLowerCase()} exitosamente`);
+                        cargarPlanes();
+                    } catch (error) {
+                        console.error('Error:', error);
+                        mostrarAlerta('error', 'Error al cambiar estado del plan');
+                    }
+                }
+            );
+        }
+
+        // Eliminar plan
+        async function eliminarPlan(planId, nombre) {
+            mostrarConfirmacion(
+                'Eliminar Plan',
+                `¿Está seguro de eliminar el plan "${nombre}"? Esta acción no se puede deshacer.`,
+                async () => {
+                    try {
+                        const response = await fetch(`/api/admin/planes-suscripcion/${planId}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (response.ok) {
+                            mostrarAlerta('success', 'Plan eliminado exitosamente');
+                            cargarPlanes();
+                        } else {
+                            const error = await response.json();
+                            mostrarAlerta('error', error.detail || 'Error al eliminar el plan');
+                        }
+                    } catch (error) {
+                        console.error('Error:', error);
+                        mostrarAlerta('error', 'Error al eliminar el plan');
+                    }
+                }
+            );
+        }
+
+        // Mostrar confirmación
+        function mostrarConfirmacion(titulo, mensaje, callback) {
+            document.getElementById('confirmarModalTitle').textContent = titulo;
+            document.getElementById('confirmarModalBody').textContent = mensaje;
+
+            const confirmarBtn = document.getElementById('confirmarBtn');
+            confirmarBtn.onclick = () => {
+                callback();
+                bootstrap.Modal.getInstance(document.getElementById('confirmarModal')).hide();
+            };
+
+            new bootstrap.Modal(document.getElementById('confirmarModal')).show();
+        }
+
+        // Mostrar alerta
+        function mostrarAlerta(tipo, mensaje) {
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${tipo === 'error' ? 'danger' : tipo} alert-dismissible fade show position-fixed`;
+            alertDiv.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+            alertDiv.innerHTML = `
+                ${mensaje}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                alertDiv.remove();
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

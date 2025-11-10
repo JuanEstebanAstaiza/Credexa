@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.core.config import settings
 from app.core.database import get_db
 from app.models.user import Usuario
+from app.models.empresa import Empresa
 
 # Contexto para hash de contraseñas
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -29,7 +30,7 @@ def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
-    """Crear token de acceso JWT"""
+    """Crear token de acceso JWT con información multi-tenant"""
     to_encode = data.copy()
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
@@ -53,7 +54,7 @@ def get_current_user(
     access_token: Optional[str] = Cookie(None),
     db: Session = Depends(get_db)
 ) -> Usuario:
-    """Obtener usuario actual desde token JWT"""
+    """Obtener usuario actual desde token JWT con información multi-tenant"""
     token = None
 
     # Intentar obtener token de Authorization header
@@ -80,6 +81,8 @@ def get_current_user(
         )
 
     user_id: int = payload.get("sub")
+    tenant_id: int = payload.get("tenant_id")  # Nuevo: obtener tenant_id del token
+
     if user_id is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -87,12 +90,23 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    # Obtener usuario primero
     user = db.query(Usuario).filter(Usuario.id == user_id).first()
+
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Usuario no encontrado",
         )
+
+    # Verificar tenant solo si NO es super-admin
+    # Los super-admins pueden acceder a todo sin restricciones de tenant
+    if not user.is_super_admin and tenant_id:
+        if user.empresa_id != tenant_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Usuario no pertenece a este tenant",
+            )
 
     if not user.activo:
         raise HTTPException(
@@ -113,11 +127,50 @@ def get_current_user_optional(
     except HTTPException:
         return None
 
+def get_current_tenant(current_user: Usuario = Depends(get_current_user)) -> Empresa:
+    """Obtener el tenant/empresa actual del usuario"""
+    # Los super-admins no pertenecen a una empresa específica
+    if current_user.is_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Los super-administradores no pertenecen a una empresa específica",
+        )
+
+    if not current_user.empresa:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuario no pertenece a ninguna empresa",
+        )
+    return current_user.empresa
+
+
+def get_current_tenant_optional(current_user: Usuario = Depends(get_current_user)) -> Optional[Empresa]:
+    """Obtener el tenant/empresa actual del usuario (opcional para super-admins)"""
+    # Los super-admins no pertenecen a una empresa específica, devolver None
+    if current_user.is_super_admin:
+        return None
+
+    if not current_user.empresa:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Usuario no pertenece a ninguna empresa",
+        )
+    return current_user.empresa
+
 def get_current_admin_user(current_user: Usuario = Depends(get_current_user)) -> Usuario:
-    """Verificar que el usuario actual sea administrador"""
+    """Verificar que el usuario actual sea administrador de su empresa"""
     if not current_user.is_admin:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="No tienes permisos de administrador",
+            detail="No tienes permisos de administrador en tu empresa",
+        )
+    return current_user
+
+def get_current_super_admin_user(current_user: Usuario = Depends(get_current_user)) -> Usuario:
+    """Verificar que el usuario actual sea super-administrador de toda la plataforma"""
+    if not current_user.is_super_admin:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="No tienes permisos de super-administrador",
         )
     return current_user

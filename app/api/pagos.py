@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import or_, and_, func
 
 from app.core.database import get_db
-from app.core.security import get_current_user
+from app.core.security import get_current_user, get_current_tenant
 from app.models.user import Usuario
 from app.models.pago import Pago
 from app.models.prestamo import Prestamo
@@ -32,15 +32,19 @@ templates = Jinja2Templates(directory="app/templates")
 async def registrar_pago(
     pago_data: PagoRegistro,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Registrar un nuevo pago"""
-    # Verificar que el préstamo existe y está activo o refinanciado
-    prestamo = db.query(Prestamo).filter(Prestamo.id == pago_data.prestamo_id).first()
+    # Verificar que el préstamo existe, está activo o refinanciado y pertenece a la empresa
+    prestamo = db.query(Prestamo).filter(
+        Prestamo.id == pago_data.prestamo_id,
+        Prestamo.empresa_id == tenant.id
+    ).first()
     if not prestamo:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Préstamo no encontrado",
+            detail="Préstamo no encontrado o no pertenece a su empresa",
         )
 
     if prestamo.estado not in ["activo", "refinanciado"]:
@@ -67,8 +71,9 @@ async def registrar_pago(
         tipo_pago = "abono"
         numero_cuota = None
 
-    # Crear el pago
+    # Crear el pago con empresa_id
     db_pago = Pago(
+        empresa_id=tenant.id,
         prestamo_id=pago_data.prestamo_id,
         fecha_pago=pago_data.fecha_pago or datetime.now(),
         monto_pagado=pago_data.monto_pagado,
@@ -287,11 +292,12 @@ async def listar_pagos(
     monto_min: Optional[float] = None,
     monto_max: Optional[float] = None,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Listar pagos con filtros y paginación"""
     # Construir filtros
-    filtros = []
+    filtros = [Pago.empresa_id == tenant.id]
 
     if prestamo_id:
         filtros.append(Pago.prestamo_id == prestamo_id)
@@ -337,15 +343,19 @@ async def listar_pagos(
 async def obtener_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Obtener un pago por ID con información del préstamo"""
     # Cargar pago con relación al préstamo
-    pago = db.query(Pago).options(joinedload(Pago.prestamo)).filter(Pago.id == pago_id).first()
+    pago = db.query(Pago).options(joinedload(Pago.prestamo)).filter(
+        Pago.id == pago_id,
+        Pago.empresa_id == tenant.id
+    ).first()
     if not pago:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Pago no encontrado",
+            detail="Pago no encontrado o no pertenece a su empresa",
         )
     return pago
 
@@ -354,14 +364,18 @@ async def actualizar_pago(
     pago_id: int,
     pago_data: PagoUpdate,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Actualizar un pago (solo campos no financieros)"""
-    pago = db.query(Pago).filter(Pago.id == pago_id).first()
+    pago = db.query(Pago).filter(
+        Pago.id == pago_id,
+        Pago.empresa_id == tenant.id
+    ).first()
     if not pago:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Pago no encontrado",
+            detail="Pago no encontrado o no pertenece a su empresa",
         )
 
     # Solo permitir actualizar campos no financieros
@@ -386,18 +400,25 @@ async def actualizar_pago(
 async def eliminar_pago(
     pago_id: int,
     db: Session = Depends(get_db),
-    current_user: Usuario = Depends(get_current_user)
+    current_user: Usuario = Depends(get_current_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Eliminar un pago (solo si el préstamo sigue activo)"""
-    pago = db.query(Pago).filter(Pago.id == pago_id).first()
+    pago = db.query(Pago).filter(
+        Pago.id == pago_id,
+        Pago.empresa_id == tenant.id
+    ).first()
     if not pago:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Pago no encontrado",
+            detail="Pago no encontrado o no pertenece a su empresa",
         )
 
-    # Verificar que el préstamo esté activo
-    prestamo = db.query(Prestamo).filter(Prestamo.id == pago.prestamo_id).first()
+    # Verificar que el préstamo esté activo y pertenezca a la empresa
+    prestamo = db.query(Prestamo).filter(
+        Prestamo.id == pago.prestamo_id,
+        Prestamo.empresa_id == tenant.id
+    ).first()
     if prestamo.estado != "activo":
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

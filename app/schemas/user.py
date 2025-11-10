@@ -57,6 +57,7 @@ class Usuario(UsuarioBase):
     rol: Rol
     is_admin: bool
     is_digitador: bool
+    is_super_admin: bool
 
     class Config:
         from_attributes = True
@@ -67,6 +68,7 @@ class Usuario(UsuarioBase):
         data = super().from_orm(obj).__dict__
         data['is_admin'] = obj.is_admin
         data['is_digitador'] = obj.is_digitador
+        data['is_super_admin'] = obj.is_super_admin
         return cls(**data)
 
 # Esquemas para autenticación

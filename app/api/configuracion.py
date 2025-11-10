@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from app.core.database import get_db
-from app.core.security import get_current_user, get_current_admin_user
+from app.core.security import get_current_user, get_current_admin_user, get_current_tenant
 from app.core.config import settings
 import logging
 
@@ -50,10 +50,11 @@ async def listar_configuraciones(
     skip: int = Query(0, ge=0),
     limit: int = Query(100, ge=1, le=1000),
     db: Session = Depends(get_db),
-    current_user: UsuarioModel = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Listar configuraciones del sistema (solo administradores)"""
-    query = db.query(ConfiguracionModel)
+    query = db.query(ConfiguracionModel).filter(ConfiguracionModel.empresa_id == tenant.id)
 
     if categoria:
         query = query.filter(ConfiguracionModel.categoria == categoria)
@@ -68,17 +69,19 @@ async def listar_configuraciones(
 async def crear_configuracion(
     configuracion: ConfiguracionCreate,
     db: Session = Depends(get_db),
-    current_user: UsuarioModel = Depends(get_current_admin_user)
+    current_user: UsuarioModel = Depends(get_current_admin_user),
+    tenant = Depends(get_current_tenant)
 ):
     """Crear nueva configuración (solo administradores)"""
-    # Verificar si ya existe
+    # Verificar si ya existe en esta empresa
     existente = db.query(ConfiguracionModel).filter(
-        ConfiguracionModel.clave == configuracion.clave
+        ConfiguracionModel.clave == configuracion.clave,
+        ConfiguracionModel.empresa_id == tenant.id
     ).first()
     if existente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Ya existe una configuración con esta clave"
+            detail="Ya existe una configuración con esta clave en su empresa"
         )
 
     # Validar tipo
@@ -88,7 +91,10 @@ async def crear_configuracion(
             detail="Tipo debe ser: string, int, float, o bool"
         )
 
-    db_config = ConfiguracionModel(**configuracion.model_dump())
+    # Crear configuración con empresa_id
+    config_dict = configuracion.model_dump()
+    config_dict["empresa_id"] = tenant.id
+    db_config = ConfiguracionModel(**config_dict)
     db.add(db_config)
     db.commit()
     db.refresh(db_config)

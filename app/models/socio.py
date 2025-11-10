@@ -2,7 +2,7 @@
 Modelo de Socio
 """
 
-from sqlalchemy import Column, Integer, String, DateTime, Text, Numeric, DECIMAL
+from sqlalchemy import Column, Integer, String, DateTime, Text, Numeric, DECIMAL, ForeignKey
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from app.core.database import Base
@@ -13,8 +13,9 @@ class Socio(Base):
     __tablename__ = "socios"
 
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)  # Multi-tenant
     nombre_completo = Column(String, nullable=False, index=True)
-    cedula = Column(String, unique=True, nullable=False, index=True)
+    cedula = Column(String, nullable=False, index=True)  # Ya no unique global, solo por empresa
     telefono = Column(String, nullable=True)
     email = Column(String, nullable=True)
     direccion = Column(Text, nullable=True)
@@ -54,5 +55,6 @@ class Socio(Base):
         return sum(float(pago.monto) for pago in self.pagos_socio if pago.tipo == "prestamo")
 
     # Relaciones
+    empresa = relationship("Empresa", back_populates="socios")  # Multi-tenant
     prestamos = relationship("Prestamo", back_populates="socio", cascade="all, delete-orphan")
     pagos_socio = relationship("PagoSocio", back_populates="socio", cascade="all, delete-orphan")

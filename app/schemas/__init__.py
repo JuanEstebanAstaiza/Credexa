@@ -29,6 +29,19 @@ from .configuracion import (
     Configuracion, ConfiguracionCreate, ConfiguracionUpdate,
     ConfiguracionBase, ConfiguracionFiltro
 )
+from .empresa import (
+    EmpresaCreate, EmpresaUpdate, EmpresaBase,
+    EmpresaResponse, EmpresaStats
+)
+from .plan_suscripcion import (
+    PlanSuscripcionCreate, PlanSuscripcionUpdate,
+    PlanSuscripcionBase, PlanSuscripcionResponse, PlanSuscripcionStats
+)
+from .suscripcion import (
+    SuscripcionCreate, SuscripcionUpdate, SuscripcionBase,
+    SuscripcionResponse, SuscripcionDetalleResponse, SuscripcionEstadisticas,
+    EstadoSuscripcion, TipoSuscripcion
+)
 
 __all__ = [
     "Rol", "RolCreate", "RolUpdate", "RolBase",
@@ -45,5 +58,12 @@ __all__ = [
     "ReportePago", "ReporteMoroso", "ReportePagoFiltro",
     "ReporteMorosoFiltro", "ReporteEstadistico",
     "Configuracion", "ConfiguracionCreate", "ConfiguracionUpdate",
-    "ConfiguracionBase", "ConfiguracionFiltro"
+    "ConfiguracionBase", "ConfiguracionFiltro",
+    "EmpresaCreate", "EmpresaUpdate", "EmpresaBase",
+    "EmpresaResponse", "EmpresaStats",
+    "PlanSuscripcionCreate", "PlanSuscripcionUpdate",
+    "PlanSuscripcionBase", "PlanSuscripcionResponse", "PlanSuscripcionStats",
+    "SuscripcionCreate", "SuscripcionUpdate", "SuscripcionBase",
+    "SuscripcionResponse", "SuscripcionDetalleResponse", "SuscripcionEstadisticas",
+    "EstadoSuscripcion", "TipoSuscripcion"
 ]

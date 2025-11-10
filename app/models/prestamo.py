@@ -12,6 +12,7 @@ class Prestamo(Base):
     __tablename__ = "prestamos"
 
     id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)  # Multi-tenant
     cliente_id = Column(Integer, ForeignKey("clientes.id"), nullable=False, index=True)
     socio_id = Column(Integer, ForeignKey("socios.id"), nullable=True, index=True)  # Socio que presta el dinero
 
@@ -45,6 +46,7 @@ class Prestamo(Base):
     actualizado_en = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relaciones
+    empresa = relationship("Empresa", back_populates="prestamos")  # Multi-tenant
     cliente = relationship("Cliente", back_populates="prestamos")
     socio = relationship("Socio", back_populates="prestamos")
     pagos = relationship("Pago", back_populates="prestamo", cascade="all, delete-orphan")

@@ -12,9 +12,12 @@ from .carpeta import Carpeta
 from .documento import Documento
 from .configuracion import Configuracion
 from .solicitud_password import SolicitudPassword
+from .empresa import Empresa
+from .plan_suscripcion import PlanSuscripcion
+from .suscripcion import Suscripcion
 
 __all__ = [
     "Usuario", "Rol", "Cliente", "Prestamo", "Pago",
     "Socio", "PagoSocio", "Carpeta", "Documento", "Configuracion",
-    "SolicitudPassword"
+    "SolicitudPassword", "Empresa", "PlanSuscripcion", "Suscripcion"
 ]
